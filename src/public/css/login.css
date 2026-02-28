@@ -1,0 +1,221 @@
+/* src/public/css/login.css */
+
+:root {
+    --gold: #FFD700;
+    --gold-light: #ffec8b;
+    --dark-bg: #09090b;
+    --glass: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --primary: #25D366;
+}
+
+body { 
+    font-family: 'Outfit', sans-serif; 
+    background-color: var(--dark-bg);
+    background-image: 
+        radial-gradient(circle at 15% 50%, rgba(37, 211, 102, 0.08), transparent 25%), 
+        radial-gradient(circle at 85% 30%, rgba(255, 215, 0, 0.05), transparent 25%);
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    height: 100vh; 
+    margin: 0; 
+    overflow: hidden;
+    color: white;
+}
+
+/* Partículas de Brilho (Fundo) */
+.sparkle {
+    position: absolute;
+    background: white;
+    border-radius: 50%;
+    opacity: 0;
+    pointer-events: none;
+    animation: float 5s infinite ease-in-out;
+    box-shadow: 0 0 10px white, 0 0 20px var(--gold);
+}
+
+/* Container Principal com Efeito 3D */
+.login-container {
+    position: relative;
+    perspective: 1000px;
+    z-index: 10;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.login-card { 
+    background: var(--glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 50px 40px; 
+    border-radius: 24px; 
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    width: 100%;
+    max-width: 320px; /* Garante responsividade em telas pequenas */
+    text-align: center; 
+    transition: transform 0.2s ease-out;
+    position: relative;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+/* Efeito de brilho passando no card */
+.login-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+    animation: shimmerCard 8s infinite linear;
+    pointer-events: none;
+}
+
+h2 { 
+    margin-bottom: 30px; 
+    font-weight: 700; 
+    letter-spacing: 1px;
+    background: linear-gradient(135deg, #fff 0%, var(--gold-light) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+.logo-icon {
+    font-size: 3rem;
+    margin-bottom: 15px;
+    display: inline-block;
+    background: linear-gradient(135deg, #e0e0e0 0%, #ffffff 50%, #a0a0a0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 10px rgba(255,255,255,0.3));
+    animation: pulseGem 3s infinite ease-in-out;
+}
+
+/* Inputs Estilizados */
+.input-group {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.input-group i {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255,255,255,0.4);
+    transition: 0.3s;
+}
+
+input { 
+    width: 100%; 
+    padding: 15px 15px 15px 45px; 
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px; 
+    box-sizing: border-box; 
+    color: white;
+    font-size: 1rem;
+    outline: none;
+    transition: all 0.3s ease;
+    font-family: 'Outfit', sans-serif;
+}
+
+input::placeholder { color: rgba(255,255,255,0.3); }
+
+input:focus { 
+    background: rgba(0,0,0,0.4);
+    border-color: var(--gold);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.1);
+}
+
+input:focus + i { color: var(--gold); }
+
+/* Botão Premium */
+button { 
+    width: 100%; 
+    padding: 15px; 
+    background: linear-gradient(135deg, var(--primary) 0%, #1c9e4b 100%);
+    color: white; 
+    border: none; 
+    border-radius: 12px; 
+    font-weight: 600; 
+    font-size: 1rem;
+    cursor: pointer; 
+    transition: 0.3s; 
+    margin-top: 10px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
+}
+
+/* Efeito Shimmer no Botão */
+button::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    transition: 0.5s;
+}
+
+button:hover { 
+    transform: translateY(-2px); 
+    box-shadow: 0 6px 20px rgba(37, 211, 102, 0.5);
+}
+
+button:hover::after { left: 100%; transition: 0.5s ease-in-out; }
+
+.error { 
+    background: rgba(255, 0, 0, 0.1);
+    border: 1px solid rgba(255, 0, 0, 0.3);
+    color: #ff6b6b; 
+    font-size: 0.9rem; 
+    margin-top: 15px; 
+    padding: 10px;
+    border-radius: 8px;
+    display: none; 
+    animation: shake 0.3s;
+}
+
+/* Footer discreto */
+.footer {
+    margin-top: 20px;
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.3);
+}
+
+/* Animações */
+@keyframes float {
+    0%, 100% { transform: translateY(0) scale(0); opacity: 0; }
+    50% { transform: translateY(-20px) scale(1); opacity: 0.8; }
+}
+
+@keyframes pulseGem {
+    0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(255,255,255,0.3)); }
+    50% { transform: scale(1.05); filter: drop-shadow(0 0 20px rgba(255,255,255,0.6)); }
+}
+
+@keyframes shimmerCard {
+    0% { left: -100%; }
+    10% { left: 200%; }
+    100% { left: 200%; }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+/* Responsividade Extra para Mobile Pequeno (240px) */
+@media (max-width: 320px) {
+    .login-card {
+        padding: 30px 20px;
+        width: 90%;
+    }
+    h2 { font-size: 1.2rem; }
+    .logo-icon { font-size: 2.5rem; }
+}

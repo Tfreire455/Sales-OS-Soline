@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Soline Sales OS 💎</title>
+
+  <script src="/socket.io/socket.io.js"></script>
+
+  <!-- GSAP 3 + plugins — antes de qualquer script de app -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/CustomEase.min.js"></script>
+
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/dashboard.css" />
+
+  <style>
+    /* ─────────────────────────────────────────────────────
+     * Elementos que GSAP vai revelar — começam invisíveis.
+     * O CSS .card:hover { transform } está no dashboard.css;
+     * GSAP usa seu próprio transform e sempre ganha a batalha,
+     * então removemos o hover de transform do CSS via override aqui.
+     * ───────────────────────────────────────────────────── */
+    .card { opacity: 0; }
+    .card:hover { transform: none; }   /* GSAP cuida do hover */
+    .status-bar { opacity: 0; }
+    .logout-btn  { opacity: 0; }
+
+    /* Log lines e group items começam invisíveis para GSAP revelar */
+    .log-line   { opacity: 0; }
+    .group-item { opacity: 0; }
+
+    /* ─────────────────────────────────────────────────────
+     * MODAL — display:flex sempre ativo para que GSAP
+     * possa animar opacity. visibility + pointer-events
+     * controlam se está "ativo" para o usuário.
+     * ───────────────────────────────────────────────────── */
+    .modal-overlay {
+        display: flex;
+        visibility: hidden;
+        pointer-events: none;
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.85);
+        z-index: 99999;
+        justify-content: center;
+        align-items: center;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        opacity: 0;
+        /* SEM transition CSS — GSAP controla tudo */
+    }
+    .modal-overlay.active {
+        visibility: visible;
+        pointer-events: auto;
+    }
+
+    .modal-card {
+        width: 500px;
+        max-width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        background: #121212;
+        border: 1px solid var(--gold);
+        border-radius: 15px;
+        box-shadow: 0 0 50px rgba(0,0,0,0.8);
+        position: relative;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        /* estado inicial para o GSAP animar a entrada */
+        opacity: 0;
+        transform: translateY(32px) scale(0.95);
+    }
+
+    .modal-header {
+        padding: 15px 20px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(255,255,255,0.02);
+        flex-shrink: 0;
+    }
+    .modal-header h2 {
+        margin: 0; font-size: 1.1rem; color: white;
+        display: flex; align-items: center; gap: 10px;
+    }
+    .modal-body {
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        overflow-y: auto;
+    }
+    .modal-section {
+        background: rgba(255,255,255,0.03);
+        padding: 15px;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.05);
+    }
+    .modal-input {
+        width: 100%;
+        background: rgba(0,0,0,0.3) !important;
+        border: 1px solid rgba(255,255,255,0.2) !important;
+        color: white !important;
+        padding: 10px;
+        border-radius: 5px;
+        font-family: 'Outfit', sans-serif;
+        outline: none;
+        transition: border-color 0.25s, background 0.25s;
+        box-sizing: border-box;
+    }
+    .modal-input:focus {
+        border-color: var(--gold) !important;
+        background: black !important;
+    }
+    label {
+        display: block;
+        margin-bottom: 5px;
+        color: #aaa;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    .close-modal-btn {
+        background: none; border: none; color: #fff;
+        font-size: 1.5rem; cursor: pointer; line-height: 1;
+        transition: color 0.2s;
+    }
+    .close-modal-btn:hover { color: var(--gold); }
+
+    /* ─── Glow ring animado ao conectar (via GSAP boxShadow) ─── */
+    .dot-green-flash {
+        animation: none; /* GSAP faz esse trabalho */
+    }
+
+    /* ─── SYSTEM ALERTS (CUSTOM MODAL & TOAST) ─── */
+    .sys-alert-overlay {
+        display: flex; visibility: hidden; pointer-events: none; opacity: 0;
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+        z-index: 999999; justify-content: center; align-items: center;
+    }
+    .sys-alert-overlay.active { visibility: visible; pointer-events: auto; }
+    .sys-alert-card {
+        background: rgba(15, 15, 15, 0.95); border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 20px; padding: 35px 30px; max-width: 420px; width: 90%;
+        text-align: center; box-shadow: 0 40px 80px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.05);
+        transform: translateY(30px) scale(0.9); opacity: 0;
+    }
+    .sys-alert-icon { font-size: 3.5rem; margin-bottom: 20px; filter: drop-shadow(0 0 15px rgba(255,255,255,0.2)); }
+    .sys-alert-msg { font-size: 1.1rem; color: #eee; margin-bottom: 30px; line-height: 1.6; font-weight: 400; }
+    .sys-alert-buttons { display: flex; gap: 15px; justify-content: center; }
+    .sys-btn {
+        flex: 1; padding: 14px; border-radius: 12px; font-weight: 700; cursor: pointer;
+        border: none; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 1px;
+        transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+    .sys-btn-cancel { background: rgba(255,255,255,0.05); color: #aaa; border: 1px solid rgba(255,255,255,0.1); }
+    .sys-btn-cancel:hover { background: rgba(255,255,255,0.1); color: #fff; transform: translateY(-2px); }
+    .sys-btn-confirm { background: var(--gold); color: #000; box-shadow: 0 0 20px rgba(212, 175, 55, 0.3); }
+    .sys-btn-confirm:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(212, 175, 55, 0.5); }
+
+    /* ─── TOP ACTIONS BAR ─── */
+    .top-actions {
+        position: fixed; top: 16px; right: 20px;
+        display: flex; gap: 8px; z-index: 100;
+        flex-wrap: wrap; justify-content: flex-end;
+    }
+    .btn-pause-bot.paused {
+        background: rgba(255,68,68,0.2) !important;
+        color: #ff8888 !important;
+        border-color: rgba(255,68,68,0.5) !important;
+        animation: pulse-red 2s infinite;
+    }
+
+    @media (max-width: 768px) {
+        .top-actions {
+            top: 10px; right: 10px; left: 10px;
+            justify-content: center; gap: 6px;
+        }
+        .top-actions .logout-btn {
+            padding: 8px 12px; font-size: 0.82rem;
+        }
+        .btn-label-desktop { display: none; }
+    }
+
+    @media (max-width: 480px) {
+        .modal-card {
+            width: 100%; height: 100vh;
+            max-height: 100vh;
+            border-radius: 0; border: none;
+        }
+        .modal-input { font-size: 16px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="particles"></div>
+
+  <div class="top-actions">
+    <button id="btn-bot-pause" onclick="toggleBotPause()" class="logout-btn btn-pause-bot" style="position:relative;top:0;right:0;background:rgba(59,130,246,0.15);color:#60a5fa;border-color:rgba(59,130,246,0.4);" title="Pausar / Retomar Bot">
+      <i class="fas fa-pause" id="pause-icon"></i> <span id="pause-label">Pausar</span>
+    </button>
+    <button onclick="abrirMigracao()" class="logout-btn" style="position:relative;top:0;right:0;background:rgba(147,51,234,0.15);color:#d8b4fe;border-color:rgba(147,51,234,0.4);" title="Migrar Planilha → Banco">
+      <i class="fas fa-database"></i> <span class="btn-label-desktop">Migrar</span>
+    </button>
+    <button onclick="abrirConfig()" class="logout-btn" style="position:relative;top:0;right:0;background:rgba(255,215,0,0.15);color:var(--gold);border-color:var(--gold);" title="Cérebro do Bot">
+      <i class="fas fa-brain"></i>
+    </button>
+    <a href="/logout" class="logout-btn" style="position:relative;top:0;right:0;" title="Sair">
+      <i class="fas fa-sign-out-alt"></i> <span class="btn-label-desktop">Sair</span>
+    </a>
+  </div>
+
+  <div class="container">
+
+    <div class="status-bar">
+      <div>
+        <span id="conn-dot" class="status-dot dot-red"></span>
+        <span id="conn-text" class="status-text">Desconectado</span>
+      </div>
+      <div id="campaign-status" style="font-weight:700;color:#555;font-size:0.9rem;text-transform:uppercase;">
+        MODO: NORMAL
+      </div>
+    </div>
+
+    <div class="card status-card">
+      <h2><span><i class="fab fa-whatsapp"></i> Conexão</span></h2>
+      <div id="qr-container">
+        <span style="color:rgba(255,255,255,0.3);font-size:0.9rem;">
+          <i class="fas fa-spinner fa-spin"></i> Inicializando...
+        </span>
+      </div>
+      <div class="status-box">
+        <span id="status-badge" class="status-badge status-offline">Offline</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span><i class="fas fa-search"></i> Detector de ID</span></h2>
+      <div id="group-list" style="max-height:230px;overflow-y:auto;padding-right:5px;">
+        <div style="text-align:center;color:rgba(255,255,255,0.2);margin-top:50px;font-size:0.9rem;">
+          <i class="far fa-comment-dots" style="font-size:2rem;margin-bottom:10px;display:block;"></i>
+          Envie mensagem em um grupo...
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="grid-row:span 2;">
+      <h2><span><i class="fas fa-terminal"></i> Terminal do Bot</span></h2>
+      <div id="logs"></div>
+    </div>
+
+    <div class="card full-width">
+
+      <div class="calendar-section" style="margin-bottom:25px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:20px;">
+        <div class="calendar-header">
+          <button class="calendar-nav-btn" onclick="mudarMes(-1)"><i class="fas fa-chevron-left"></i></button>
+          <span class="month-label" id="calendarMonthLabel">Carregando...</span>
+          <button class="calendar-nav-btn" onclick="mudarMes(1)"><i class="fas fa-chevron-right"></i></button>
+        </div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+      </div>
+
+      <div class="campaign-panel">
+        <h2 style="border:none;margin-bottom:20px;color:white;">
+          <span><i class="fas fa-rocket text-yellow-500"></i> Controle Manual</span>
+        </h2>
+        <div class="mode-selector">
+          <div class="mode-btn active-normal" onclick="selectMode('NORMAL')" id="btn-normal">
+            <i class="fas fa-leaf"></i><span>Normal</span><small>Mix Automático</small>
+          </div>
+          <div class="mode-btn" onclick="selectMode('BLITZ')" id="btn-blitz">
+            <i class="fas fa-bolt"></i><span>Blitz</span><small>Prioridades ⭐</small>
+          </div>
+          <div class="mode-btn" onclick="selectMode('COLECAO')" id="btn-colecao">
+            <i class="fas fa-gem"></i><span>Desfile</span><small>Por Coleção</small>
+          </div>
+        </div>
+        <div class="action-area">
+          <select id="collection-select" class="collection-select">
+            <option value="">Carregando Coleções...</option>
+          </select>
+          <button id="main-action-btn" class="btn-start" onclick="toggleCampaign()">EM OPERAÇÃO (AUTO)</button>
+        </div>
+        <div id="campaign-hint" style="margin-top:12px;font-size:0.8rem;color:#666;text-align:center;font-style:italic;">
+          Modo Normal: O bot seleciona produtos automaticamente e envia a cada 1h.
+        </div>
+      </div>
+
+      <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:30px;">
+        <h2 style="margin:0;"><span><i class="fas fa-gem"></i> Catálogo de Vendas</span></h2>
+        <div class="header-actions">
+          <button class="btn-exp" onclick="abrirListaVip()" title="Gerenciar Clientes VIP" style="background:rgba(212,175,55,0.15);color:var(--gold);border:1px solid var(--gold);margin-right:5px;">
+            <i class="fas fa-users"></i>
+          </button>
+          <button class="btn-exp btn-refresh-exp" onclick="carregarProdutos()" title="Recarregar">
+            <svg viewBox="0 0 512 512" class="svgIcon"><path d="M448 256c0-106-86-192-192-192V0L128 128l128 128V192c70.7 0 128 57.3 128 128s-57.3 128-128 128-128-57.3-128-128H64c0 106 86 192 192 192s192-86 192-192z"></path></svg>
+          </button>
+          <button class="btn-exp btn-reset-exp" onclick="resetarTudo(event)" title="Resetar filtros">
+            <svg viewBox="0 0 448 512" class="svgIcon"><path d="M135.2 17.7L128 32H32C14.3 32 0 46.3 0 64S14.3 96 32 96H416c17.7 0 32-14.3 32-32s-14.3-32-32-32H320l-7.2-14.3C307.4 6.8 296.3 0 284.2 0H163.8c-12.1 0-23.2 6.8-28.6 17.7zM416 128H32L53.2 467c1.6 25.3 22.6 45.3 47.9 45H346.9c25.3 0 46.3-19.7 47.9-45L416 128z"></path></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="filters">
+        <div style="position:relative;flex:1;">
+          <i class="fas fa-search" style="position:absolute;left:15px;top:13px;color:rgba(255,255,255,0.3)"></i>
+          <input type="text" id="searchInput" class="search-bar" placeholder="Buscar produto, SKU..." onkeyup="filtrarTabela()" style="padding-left:40px;">
+        </div>
+        <select id="collectionFilter" class="select-filter" onchange="filtrarTabela()">
+          <option value="">Todas as Coleções</option>
+        </select>
+        <div style="display:flex;gap:10px;">
+          <button class="btn-filter active" onclick="filtrarStatus('todos', this)">Todos</button>
+          <button class="btn-filter" onclick="filtrarStatus('pendente', this)">Pendentes</button>
+          <button class="btn-filter" onclick="filtrarStatus('enviado', this)">Enviados</button>
+          <button class="btn-filter" onclick="filtrarStatus('erro', this)">Erros</button>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table id="prodTable">
+          <thead>
+            <tr>
+              <th width="50" align="center" title="Prioridade">⭐</th>
+              <th width="80">Foto</th>
+              <th>Produto / SKU</th>
+              <th>Preço</th>
+              <th>Coleção</th>
+              <th width="80">Estoque</th>
+              <th>Status</th>
+              <th width="60" align="center">Ação</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr><td colspan="8" align="center" style="padding:30px;color:rgba(255,255,255,0.3);">Carregando estoque...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: CÉREBRO DO BOT -->
+  <div id="configModal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2><i class="fas fa-brain" style="color:var(--gold)"></i> Cérebro do Bot</h2>
+        <button onclick="fecharConfig()" class="close-modal-btn">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-section" style="border-left:3px solid var(--primary);">
+          <h3 style="margin:0 0 15px 0;color:var(--primary);font-size:0.9rem;text-transform:uppercase;">🕒 Horário de Funcionamento</h3>
+          <div style="display:flex;gap:15px;">
+            <div style="flex:1;"><label>Início (h)</label><input type="number" id="cfg_hora_inicio" class="modal-input" min="0" max="23"></div>
+            <div style="flex:1;"><label>Fim (h)</label><input type="number" id="cfg_hora_fim" class="modal-input" min="0" max="23"></div>
+          </div>
+        </div>
+        <div class="modal-section" style="border-left:3px solid #fff;">
+          <h3 style="margin:0 0 10px 0;color:#fff;font-size:0.9rem;text-transform:uppercase;"><i class="fas fa-leaf"></i> Modo Normal</h3>
+          <div style="display:grid;grid-template-columns:100px 1fr;gap:10px;">
+            <div><label>Minutos</label><input type="number" id="cfg_int_normal" class="modal-input"></div>
+            <div><label>Personalidade da IA</label><input type="text" id="cfg_prompt_normal" class="modal-input"></div>
+          </div>
+        </div>
+        <div class="modal-section" style="background:rgba(255,68,68,0.05);border-color:rgba(255,68,68,0.2);border-left:3px solid #ff4444;">
+          <h3 style="margin:0 0 10px 0;color:#ff8888;font-size:0.9rem;text-transform:uppercase;"><i class="fas fa-bolt"></i> Blitz Relâmpago</h3>
+          <div style="display:grid;grid-template-columns:100px 1fr;gap:10px;">
+            <div><label>Minutos</label><input type="number" id="cfg_int_blitz" class="modal-input"></div>
+            <div><label>Personalidade da IA</label><input type="text" id="cfg_prompt_blitz" class="modal-input"></div>
+          </div>
+        </div>
+        <div class="modal-section" style="background:rgba(255,215,0,0.05);border-color:rgba(255,215,0,0.2);border-left:3px solid var(--gold);">
+          <h3 style="margin:0 0 10px 0;color:var(--gold);font-size:0.9rem;text-transform:uppercase;"><i class="fas fa-gem"></i> Desfile Coleção</h3>
+          <div style="display:grid;grid-template-columns:100px 1fr;gap:10px;">
+            <div><label>Minutos</label><input type="number" id="cfg_int_colecao" class="modal-input"></div>
+            <div><label>Personalidade da IA</label><input type="text" id="cfg_prompt_colecao" class="modal-input"></div>
+          </div>
+        </div>
+        <button onclick="salvarConfig()" class="btn-start" style="width:100%;margin-top:10px;background:var(--primary);color:white;">SALVAR ALTERAÇÕES</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: AGENDAR CAMPANHA -->
+  <div id="scheduleModal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2><i class="fas fa-calendar-alt" style="color:var(--gold)"></i> Agendar Campanha</h2>
+        <button onclick="fecharSchedule()" class="close-modal-btn">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="sched_id">
+        <div class="modal-section"><label>Nome do Evento</label><input type="text" id="sched_nome" class="modal-input" placeholder="Ex: Dia das Mães"></div>
+        <div class="modal-section" style="display:flex;gap:10px;">
+          <div style="flex:1"><label>Início</label><input type="datetime-local" id="sched_inicio" class="modal-input"></div>
+          <div style="flex:1"><label>Fim</label><input type="datetime-local" id="sched_fim" class="modal-input"></div>
+        </div>
+        <div class="modal-section">
+          <label>Estratégia</label>
+          <select id="sched_modo" class="modal-input" onchange="toggleSchedFiltro()">
+            <option value="BLITZ">⚡ Blitz Relâmpago</option>
+            <option value="COLECAO">💎 Desfile de Coleção</option>
+          </select>
+        </div>
+        <div class="modal-section" id="sched_filtro_div" style="display:none;">
+          <label>Coleção Alvo</label><select id="sched_filtro" class="modal-input"></select>
+        </div>
+        <div class="modal-section">
+          <label>Mensagem de Aquecimento</label>
+          <textarea id="sched_msg" class="modal-input" rows="3" placeholder="Ex: Preparem-se! Amanhã começa..."></textarea>
+          <button class="btn-action" style="width:100%;border-radius:6px;margin-top:5px;font-size:0.8rem;background:rgba(255,255,255,0.1);justify-content:center;" onclick="gerarCopySugestao()">✨ Gerar Sugestão com IA</button>
+        </div>
+        <button onclick="salvarAgendamento()" class="btn-start" style="width:100%">AGENDAR CAMPANHA</button>
+        <button onclick="deletarAgendamento()" id="btn-del-sched" class="btn-start" style="width:100%;background:#ff4444;margin-top:10px;display:none;">EXCLUIR AGENDAMENTO</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: LISTA VIP -->
+  <div id="vipListModal" class="modal-overlay">
+    <div class="modal-card" style="width:700px;max-width:95%;">
+      <div class="modal-header">
+        <h2><i class="fas fa-birthday-cake" style="color:#ff69b4"></i> Clube VIP (Aniversariantes)</h2>
+        <button onclick="fecharListaVip()" class="close-modal-btn">×</button>
+      </div>
+      <div class="modal-body" style="padding:0;">
+        <div style="padding:15px;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.9rem;color:#aaa;" id="vip-total-count">Carregando...</span>
+          <button onclick="carregarVips()" class="btn-action" title="Atualizar"><i class="fas fa-sync"></i></button>
+        </div>
+        <div style="max-height:400px;overflow-y:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
+            <thead style="position:sticky;top:0;background:#1a1a1a;">
+              <tr style="text-align:left;color:#888;">
+                <th style="padding:15px;">Nome</th>
+                <th style="padding:15px;">WhatsApp</th>
+                <th style="padding:15px;">Nascimento</th>
+                <th style="padding:15px;text-align:center;">Ação</th>
+              </tr>
+            </thead>
+            <tbody id="vipTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: MIGRAÇÃO COM SENHA -->
+  <div id="migrateModal" class="modal-overlay">
+    <div class="modal-card" style="width:440px;">
+      <div class="modal-header">
+        <h2><i class="fas fa-database" style="color:#d8b4fe"></i> Migrar Planilha → Banco</h2>
+        <button onclick="fecharMigracao()" class="close-modal-btn">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-section" style="border-left:3px solid #9333ea;">
+          <p style="color:#ccc;font-size:0.88rem;margin:0 0 12px 0;line-height:1.5;">
+            Esta ação irá <strong style="color:white;">sincronizar todos os produtos</strong> da Google Sheets com o banco de dados PostgreSQL.<br><br>
+            Produtos existentes serão atualizados. Produtos que não existem mais na planilha serão removidos.
+          </p>
+        </div>
+        <div class="modal-section">
+          <label>🔒 Confirme sua senha do painel</label>
+          <input type="password" id="migrate_password" class="modal-input" placeholder="Senha de acesso" autocomplete="off">
+        </div>
+        <button id="btn-exec-migrate" onclick="executarMigracao()" class="btn-start" style="width:100%;background:linear-gradient(135deg,#7c3aed,#9333ea);color:white;box-shadow:0 4px 15px rgba(147,51,234,0.3);">
+          <i class="fas fa-sync-alt"></i>&nbsp; EXECUTAR MIGRAÇÃO
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="sysAlertModal" class="sys-alert-overlay">
+    <div class="sys-alert-card" id="sysAlertCard">
+      <div id="sysAlertIcon" class="sys-alert-icon"></div>
+      <div id="sysAlertMsg" class="sys-alert-msg">Mensagem</div>
+      <div id="sysAlertButtons" class="sys-alert-buttons"></div>
+    </div>
+  </div>
+
+  <script src="../js/dashboard.js"></script>
+</body>
+</html>
