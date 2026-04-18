@@ -726,9 +726,39 @@ app.delete("/api/vip/:id", requireAuth, async (req, res) => {
 
 app.get("/api/clientes", requireAuth, async (req, res) => {
 	try {
-		res.json(await db.getAllClientes());
+		const timeoutMs = 12000;
+		const clientes = await Promise.race([
+			db.getAllClientes(),
+			new Promise((_, reject) =>
+				setTimeout(() => reject(new Error("Timeout ao carregar clientes")), timeoutMs),
+			),
+		]);
+
+		res.json(Array.isArray(clientes) ? clientes : []);
 	} catch (e) {
-		res.status(500).json({ error: e.message });
+		console.error("[GET /api/clientes]", e.message);
+
+		try {
+			const fallback = await db.executeQuery(`
+				SELECT
+					c.*,
+					0::bigint AS total_compras,
+					0::bigint AS pendentes,
+					0::numeric AS valor_pago_total,
+					0::numeric AS valor_em_aberto,
+					0::numeric AS ticket_medio
+				FROM clientes c
+				ORDER BY c.nome ASC
+			`);
+
+			return res.json(fallback.rows || []);
+		} catch (fallbackErr) {
+			console.error("[GET /api/clientes][fallback]", fallbackErr.message);
+			return res.status(500).json({
+				error: "Nao foi possivel carregar os clientes no momento.",
+				details: fallbackErr.message,
+			});
+		}
 	}
 });
 

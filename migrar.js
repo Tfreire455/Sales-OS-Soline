@@ -6,7 +6,11 @@ import { config } from './src/config/settings.js';
 // Configuração da Conexão (SSL Obrigatório para Neon)
 const pool = new pg.Pool({
     connectionString: config.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
+    ssl: { rejectUnauthorized: false },
+    max: Number(process.env.PG_POOL_MAX || 5),
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 30000,
+    keepAlive: true,
 });
 
 // Função para limpar textos (remove acentos e espaços)
@@ -18,9 +22,17 @@ const normalize = (str) => {
 async function migrar() {
     console.log("🚀 Iniciando Sincronização BLINDADA (Planilha -> Banco)...");
 
-    const client = await pool.connect();
+    if (!config.DATABASE_URL) throw new Error('DATABASE_URL não configurada');
+    if (!config.SHEET_ID) throw new Error('SHEET_ID não configurado');
+    if (!config.GOOGLE_CREDS?.client_email || !config.GOOGLE_CREDS?.private_key) {
+        throw new Error('GOOGLE_CREDS incompleto');
+    }
+
+    let client;
 
     try {
+        client = await pool.connect();
+
         // 1. GARANTE ESTRUTURA DO BANCO
         console.log("🛠️ Verificando banco de dados...");
         await client.query(`
@@ -150,11 +162,13 @@ async function migrar() {
         }
 
     } catch (error) {
-        await client.query('ROLLBACK');
+        if (client) {
+            try { await client.query('ROLLBACK'); } catch {}
+        }
         console.error("\n❌ ERRO FATAL NA MIGRAÇÃO:", error);
     } finally {
-        client.release();
-        pool.end();
+        if (client) client.release();
+        await pool.end();
     }
 }
 
