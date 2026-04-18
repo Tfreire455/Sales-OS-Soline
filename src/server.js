@@ -417,7 +417,18 @@ app.get("/crm/cliente", requireAuth, noCacheHtml, (req, res) =>
 app.get("/pedido", requireAuth, noCacheHtml, (req, res) =>
 	res.sendFile(path.join(__dirname, "public/html", "pedido.html")),
 );
-app.use(express.static(path.join(__dirname, "public"), { index: false }));
+app.use(express.static(path.join(__dirname, "public"), {
+	index: false,
+	etag: true,
+	lastModified: true,
+	setHeaders: (res, filePath) => {
+		if (/\.(js|css|html)$/i.test(filePath)) {
+			res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+			res.setHeader("Pragma", "no-cache");
+			res.setHeader("Expires", "0");
+		}
+	},
+}));
 
 app.get("/api/image-proxy", requireAuth, async (req, res) => {
 	const { url } = req.query;

@@ -495,7 +495,7 @@ export class DatabaseService {
         `);
 
         await this.normalizeProductValues();
-        await this.ensureVendasHydrated();
+        this.kickoffVendasHydration();
 
         console.log("   CRM: Tabelas clientes/vendas/pagamentos prontas.");
     }
@@ -619,6 +619,12 @@ export class DatabaseService {
         return this.rehydratePromise;
     }
 
+    kickoffVendasHydration() {
+        this.ensureVendasHydrated().catch((err) => {
+            console.error("⚠️ Falha ao reidratar vendas em background:", err.message);
+        });
+    }
+
     async buildClienteResumo(clienteId) {
         const res = await this.executeQuery(`
             SELECT c.*,
@@ -717,7 +723,7 @@ export class DatabaseService {
     }
 
     async getAllClientes() {
-        await this.ensureVendasHydrated();
+        this.kickoffVendasHydration();
 
         const res = await this.executeQuery(`
             SELECT c.*,
@@ -815,7 +821,7 @@ export class DatabaseService {
     }
 
     async getAllVendas() {
-        await this.ensureVendasHydrated();
+        this.kickoffVendasHydration();
 
         const res = await this.executeQuery(`
             SELECT v.*, c.nome AS cliente_nome, c.whatsapp AS cliente_whatsapp
