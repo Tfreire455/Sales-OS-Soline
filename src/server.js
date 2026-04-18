@@ -736,6 +736,8 @@ app.delete("/api/vip/:id", requireAuth, async (req, res) => {
 	}
 });
 
+// SUBSTITUA NO src/server.js PELO BLOCO ABAIXO
+
 app.get("/api/clientes", requireAuth, async (req, res) => {
 	try {
 		const result = await Promise.race([
@@ -752,21 +754,15 @@ app.get("/api/clientes", requireAuth, async (req, res) => {
 				GROUP BY c.id
 				ORDER BY c.nome ASC
 			`),
-			new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout ao carregar clientes")), 10000)),
-		]);
-
-		return res.json(result.rows || []);
-		const timeoutMs = 12000;
-		const clientes = await Promise.race([
-			db.getAllClientes(),
 			new Promise((_, reject) =>
-				setTimeout(() => reject(new Error("Timeout ao carregar clientes")), timeoutMs),
+				setTimeout(() => reject(new Error("Timeout ao carregar clientes")), 10000),
 			),
 		]);
 
-		res.json(Array.isArray(clientes) ? clientes : []);
+		res.json(result.rows || []);
 	} catch (e) {
 		console.error("[GET /api/clientes] consulta principal falhou:", e.message);
+
 		try {
 			const fallback = await db.executeQuery(`
 				SELECT
@@ -779,11 +775,45 @@ app.get("/api/clientes", requireAuth, async (req, res) => {
 				FROM clientes c
 				ORDER BY c.nome ASC
 			`);
-			return res.json(fallback.rows || []);
+
+			res.json(fallback.rows || []);
 		} catch (fallbackErr) {
 			console.error("[GET /api/clientes] fallback falhou:", fallbackErr.message);
-			return res.status(500).json({ error: fallbackErr.message || "Erro ao carregar clientes" });
+			res
+				.status(500)
+				.json({ error: fallbackErr.message || "Erro ao carregar clientes" });
 		}
+	}
+});
+
+app.post("/api/migrate", requireAuth, async (req, res) => {
+	try {
+		const { password } = req.body || {};
+
+		if (!password || password !== config.DASHBOARD.PASS) {
+			return res.status(403).json({
+				success: false,
+				error: "Senha incorreta",
+			});
+		}
+
+		const mod = await import(path.join(__dirname, "..", "migrar.js"));
+		await mod.migrar();
+
+		const total = await db.executeQuery(
+			"SELECT COUNT(*)::int AS total FROM produtos",
+		);
+
+		res.json({
+			success: true,
+			total: total.rows?.[0]?.total || 0,
+		});
+	} catch (e) {
+		console.error("[POST /api/migrate]", e);
+		res.status(500).json({
+			success: false,
+			error: e.message || "Erro ao executar migração",
+		});
 	}
 });
 
