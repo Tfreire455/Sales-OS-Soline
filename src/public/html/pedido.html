@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Novo Pedido • Soline Sales OS</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/pedido.css" />
+</head>
+<body>
+  <div class="pedido-shell">
+    <header class="pedido-header reveal-up">
+      <button class="icon-btn" type="button" onclick="voltarOrigem?.()" aria-label="Voltar">
+        <i class="fas fa-arrow-left"></i>
+      </button>
+
+      <div class="pedido-header-copy">
+        <span class="eyebrow">Novo pedido</span>
+        <h1>Criar pedido</h1>
+        <p>Busca rápida, paginação de 10 itens, filtros inteligentes e uma navegação mais fluida.</p>
+      </div>
+
+      <button class="icon-btn" id="themeToggleBtn" type="button" aria-label="Alternar tema">
+        <i class="fas fa-moon" id="themeToggleIcon"></i>
+      </button>
+    </header>
+
+    <section class="cliente-strip reveal-up delay-1">
+      <div class="cliente-strip-copy">
+        <span class="eyebrow">Cliente selecionado</span>
+        <strong id="clienteNome">Carregando...</strong>
+        <small id="clienteMeta">Selecione o cliente pelo CRM.</small>
+      </div>
+
+      <button class="ghost-btn cliente-action" type="button" onclick="voltarOrigem?.()">
+        Trocar cliente
+      </button>
+    </section>
+
+    <section class="filtros-panel reveal-up delay-2">
+      <div class="field search-field search-main">
+        <label for="produtoBusca">Buscar item</label>
+        <div class="input-icon-wrap">
+          <i class="fas fa-search"></i>
+          <input id="produtoBusca" type="text" placeholder="Nome, SKU, coleção ou categoria" />
+        </div>
+      </div>
+
+      <div class="filters-grid">
+        <div class="field">
+          <label for="filtroCategoria">Categoria</label>
+          <select id="filtroCategoria">
+            <option value="">Todas</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="filtroColecao">Coleção</label>
+          <select id="filtroColecao">
+            <option value="">Todas</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="filtroOrdenacao">Ordenar</label>
+          <select id="filtroOrdenacao">
+            <option value="relevancia">Mais relevantes</option>
+            <option value="nome">Nome A-Z</option>
+            <option value="preco-asc">Menor preço</option>
+            <option value="preco-desc">Maior preço</option>
+            <option value="estoque-desc">Maior estoque</option>
+          </select>
+        </div>
+
+        <div class="field field-range">
+          <label for="filtroPrecoMin">Preço mínimo</label>
+          <input id="filtroPrecoMin" type="number" min="0" step="0.01" placeholder="0,00" />
+        </div>
+
+        <div class="field field-range">
+          <label for="filtroPrecoMax">Preço máximo</label>
+          <input id="filtroPrecoMax" type="number" min="0" step="0.01" placeholder="9999,99" />
+        </div>
+
+        <div class="field field-actions-inline">
+          <label class="label-hidden">Ações</label>
+          <button class="ghost-btn full-btn" type="button" id="btnLimparFiltros">
+            <i class="fas fa-rotate-left"></i>
+            <span>Limpar filtros</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="toggle-row-wrap">
+        <label class="switch-row" for="filtroDisponiveis">
+          <input id="filtroDisponiveis" type="checkbox" checked />
+          <span>Mostrar apenas itens disponíveis</span>
+        </label>
+      </div>
+    </section>
+
+    <section class="resultado-topbar reveal-up delay-3">
+      <div class="resultado-group">
+        <strong id="resultadoCount">0 produtos</strong>
+        <span id="resultadoHint">Use os filtros para localizar a peça.</span>
+      </div>
+
+      <div class="resultado-group right">
+        <span class="page-badge" id="pageBadge">Página 1 de 1</span>
+      </div>
+    </section>
+
+    <main class="pedido-content">
+      <section class="catalogo-area reveal-up delay-4">
+        <div class="catalogo-lista" id="catalogoLista"></div>
+
+        <div class="pagination-wrap" id="paginationWrap">
+          <button class="pagination-btn" type="button" id="btnPrimeiraPagina">
+            <i class="fas fa-angles-left"></i>
+          </button>
+
+          <button class="pagination-btn" type="button" id="btnPaginaAnterior">
+            <i class="fas fa-angle-left"></i>
+          </button>
+
+          <div class="pagination-numbers" id="paginationNumbers"></div>
+
+          <button class="pagination-btn" type="button" id="btnProximaPagina">
+            <i class="fas fa-angle-right"></i>
+          </button>
+
+          <button class="pagination-btn" type="button" id="btnUltimaPagina">
+            <i class="fas fa-angles-right"></i>
+          </button>
+        </div>
+      </section>
+
+      <aside class="pedido-sidebar reveal-up delay-4">
+        <section class="resumo-card glass-card">
+          <div class="card-header">
+            <div class="card-title-wrap">
+              <span class="eyebrow">Pedido</span>
+              <h2>Itens selecionados</h2>
+            </div>
+
+            <button class="ghost-btn danger card-action" type="button" id="btnLimparCarrinho">
+              Limpar
+            </button>
+          </div>
+
+          <div id="carrinhoLista" class="carrinho-lista"></div>
+
+          <div class="resumo-total">
+            <span>Total</span>
+            <strong id="pedidoTotal">R$ 0,00</strong>
+          </div>
+        </section>
+
+        <section class="resumo-card compact glass-card">
+          <div class="card-header compact-head">
+            <div class="card-title-wrap">
+              <span class="eyebrow">Pagamento</span>
+              <h2>Detalhes</h2>
+            </div>
+          </div>
+
+          <div class="payment-grid">
+            <div class="field">
+              <label for="pedidoPago">Situação</label>
+              <select id="pedidoPago">
+                <option value="false">Pendente</option>
+                <option value="true">Pago</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="pedidoDataPagamento">Data do pagamento</label>
+              <input id="pedidoDataPagamento" type="date" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="pedidoObs">Observações</label>
+            <textarea id="pedidoObs" rows="4" placeholder="Ex: separar para retirada, cliente pediu embalagem, pagamento parcial..."></textarea>
+          </div>
+
+          <button class="primary-btn" id="btnConfirmarPedido" type="button">
+            <i class="fas fa-check-circle"></i>
+            <span>Finalizar pedido</span>
+          </button>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <script src="/js/pedido.js"></script>
+</body>
+</html>

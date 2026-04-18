@@ -1,0 +1,14 @@
+Ajustes desta versão (deploy/mobile/css):
+- Removido o bloco <style> inline do index.html.
+- Criado /src/public/css/dashboard-shell.css para centralizar estilos que estavam no HTML.
+- Adicionado cache busting em CSS/JS no HTML (?v=20260401b) para evitar cache antigo no celular após deploy.
+- Refatorado header/menu mobile com classes CSS próprias e JS de abertura/fechamento mais estável.
+- Corrigidos estilos dos botões de pareamento (QR Code / Código).
+- Movidos estilos visíveis importantes do HTML para classes CSS.
+- Ajustado setPairingView e sincronização visual do menu mobile.
+- Mantido dashboard.css principal e separado o shell/UI para reduzir conflito de cascata no mobile.
+
+Causa mais provável do problema no celular:
+1) CSS duplicado/conflitante entre dashboard.css e <style> inline do index.html.
+2) Cache do CSS/JS antigo no navegador após deploy.
+3) Regras mobile disputando prioridade com estilos embutidos.

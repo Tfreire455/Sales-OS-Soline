@@ -1,0 +1,20 @@
+Ajustes aplicados para o problema do CRM em produção:
+
+1. Sessão/autenticação
+- Middleware de autenticação agora retorna JSON 401 nas rotas /api quando a sessão expira.
+- Frontend do CRM passou a detectar sessão expirada e redirecionar para /login.
+
+2. Frontend CRM
+- crm.js e crm-cliente.js agora fazem fetch com credentials same-origin e Accept application/json.
+- Adicionados estados de carregamento e erro visível na tela.
+
+3. Postgres / performance
+- Removido padrão que provocava aviso de client.query concorrente na mesma conexão.
+- Pool do pg ajustado para ambiente hospedado.
+- Reidratação de vendas deixou de rodar em toda chamada de clientes; agora acontece com cache em memória/background.
+
+Arquivos alterados:
+- src/server.js
+- src/services/postgres.service.js
+- src/public/js/crm.js
+- src/public/js/crm-cliente.js

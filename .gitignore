@@ -1,0 +1,8 @@
+.env
+/node_modules
+package-lock.json
+implementacoes.txt
+credentials.json
+auth_info_baileys
+build
+*.log
