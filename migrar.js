@@ -19,7 +19,7 @@ const normalize = (str) => {
     return str.toString().trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 };
 
-async function migrar() {
+export async function migrar() {
     console.log("🚀 Iniciando Sincronização BLINDADA (Planilha -> Banco)...");
 
     if (!config.DATABASE_URL) throw new Error('DATABASE_URL não configurada');
@@ -172,4 +172,9 @@ async function migrar() {
     }
 }
 
-migrar();
+if (import.meta.url === `file://${process.argv[1]}`) {
+    migrar().catch((error) => {
+        console.error("\n❌ ERRO FATAL NA MIGRAÇÃO:", error);
+        process.exitCode = 1;
+    });
+}
