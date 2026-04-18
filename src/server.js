@@ -346,7 +346,7 @@ app.use(
 		proxy: true,
 		rolling: true,
 		cookie: {
-			secure: auto,
+			secure: "auto",
 			httpOnly: true,
 			sameSite: "lax",
 			maxAge: 86400000,
