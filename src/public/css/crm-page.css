@@ -543,3 +543,22 @@
   gap: 10px;
   min-height: 220px;
 }
+
+/* Fallback visual para produção: mantém os cards visíveis mesmo se a requisição do CRM demorar ou falhar */
+.crm-page-body .card,
+.crm-page-body .crm-inline-form,
+.crm-page-body .crm-page-list-panel,
+.crm-page-body .crm-sales-panel,
+.crm-page-body .crm-summary-card,
+.crm-page-body .crm-client-hero {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+}
+
+#crm-clients-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 220px;
+}

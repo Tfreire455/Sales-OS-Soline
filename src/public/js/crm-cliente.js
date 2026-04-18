@@ -6,6 +6,15 @@ const els = {
 };
 const escapeHtml = (str='') => String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
 const showToast = (msg) => alert(msg);
+
+function revealCards() {
+  document.querySelectorAll(".card").forEach((card) => {
+    card.style.opacity = "1";
+    card.style.visibility = "visible";
+    card.style.transform = "none";
+  });
+}
+
 async function api(url, options){
   const res = await fetch(url, {
     ...(options || {}),
