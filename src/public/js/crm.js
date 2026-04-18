@@ -1,28 +1,23 @@
-// SUBSTITUA TODO O ARQUIVO src/public/js/crm.js POR ESTE
-
 const state = { clientes: [], search: "" };
 
-function getEls() {
-	return {
-		list: document.getElementById("crm-clients-list"),
-		total: document.getElementById("crm-total-count"),
-		search: document.getElementById("crm-search"),
-		formSection: document.getElementById("crm-form-section"),
-		formTitle: document.getElementById("crm-form-title"),
-		editId: document.getElementById("edit-cliente-id"),
-		nome: document.getElementById("cliente-nome"),
-		whatsapp: document.getElementById("cliente-whatsapp"),
-		email: document.getElementById("cliente-email"),
-		obs: document.getElementById("cliente-obs"),
-		btnOpenClientForm: document.getElementById("btn-open-client-form"),
-		btnCloseClientForm: document.getElementById("btn-close-client-form"),
-		btnSaveClient: document.getElementById("btn-save-client"),
-		themeBtn: document.getElementById("crm-theme-btn"),
-		themeIcon: document.getElementById("crm-theme-icon"),
-	};
-}
-
-let els = getEls();
+const els = {
+	list: document.getElementById("crm-clients-list"),
+	total: document.getElementById("crm-total-count"),
+	search: document.getElementById("crm-search"),
+	formSection: document.getElementById("crm-form-section"),
+	formTitle: document.getElementById("crm-form-title"),
+	editId: document.getElementById("edit-cliente-id"),
+	nome: document.getElementById("cliente-nome"),
+	whatsapp: document.getElementById("cliente-whatsapp"),
+	email: document.getElementById("cliente-email"),
+	obs: document.getElementById("cliente-obs"),
+	btnOpenClientForm: document.getElementById("btn-open-client-form"),
+	btnCloseClientForm: document.getElementById("btn-close-client-form"),
+	btnSaveClient: document.getElementById("btn-save-client"),
+	themeBtn: document.getElementById("crm-theme-btn"),
+	themeIcon: document.getElementById("crm-theme-icon"),
+	backBtn: document.getElementById("crmBackBtn"),
+};
 
 const escapeHtml = (str = "") =>
 	String(str)
@@ -48,16 +43,14 @@ async function api(url, options = {}) {
 
 	try {
 		const res = await fetch(url, {
-			method: options.method || "GET",
 			credentials: "same-origin",
-			cache: "no-store",
-			redirect: "follow",
-			signal: controller.signal,
 			headers: {
 				Accept: "application/json",
 				...(options.headers || {}),
 			},
-			body: options.body,
+			redirect: "follow",
+			signal: controller.signal,
+			...options,
 		});
 
 		const contentType = (res.headers.get("content-type") || "").toLowerCase();
@@ -80,7 +73,9 @@ async function api(url, options = {}) {
 		return data;
 	} catch (err) {
 		if (err.name === "AbortError") {
-			throw new Error("A requisição demorou demais. Verifique o servidor na SquareCloud.");
+			throw new Error(
+				"A requisição demorou demais. Verifique o servidor na SquareCloud.",
+			);
 		}
 		throw err;
 	} finally {
@@ -106,6 +101,14 @@ function toggleTheme() {
 	document.documentElement.setAttribute("data-theme", next);
 	localStorage.setItem("soline-theme", next);
 	syncThemeIcon(next);
+}
+
+function goBackFromCRM() {
+	if (window.history.length > 1) {
+		window.history.back();
+		return;
+	}
+	window.location.href = "/";
 }
 
 function openClientForm(cliente = null) {
@@ -137,19 +140,21 @@ function closeClientForm() {
 }
 
 function getFilteredClientes() {
-	const q = String(state.search || "").trim().toLowerCase();
+	const q = String(state.search || "")
+		.trim()
+		.toLowerCase();
 	if (!q) return state.clientes;
 
 	return state.clientes.filter((c) =>
 		[c?.nome, c?.whatsapp, c?.email].some((v) =>
-			String(v || "").toLowerCase().includes(q),
+			String(v || "")
+				.toLowerCase()
+				.includes(q),
 		),
 	);
 }
 
 function renderClientes() {
-	els = getEls();
-
 	if (!els.list || !els.total) return;
 
 	const lista = getFilteredClientes();
@@ -192,33 +197,17 @@ function renderClientes() {
 						<div class="crm-subtext">Toque para abrir os dados completos e os pedidos.</div>
 
 						<div class="crm-client-actions">
-							<button
-								class="crm-inline-btn info"
-								type="button"
-								data-action="open"
-								data-id="${escapeHtml(String(c?.id || ""))}"
-							>
+							<button class="crm-inline-btn info" type="button" data-action="open" data-id="${escapeHtml(String(c?.id || ""))}">
 								<i class="fas fa-eye"></i>
 								<span>Abrir</span>
 							</button>
 
-							<button
-								class="crm-inline-btn info"
-								type="button"
-								data-action="edit"
-								data-id="${escapeHtml(String(c?.id || ""))}"
-							>
+							<button class="crm-inline-btn info" type="button" data-action="edit" data-id="${escapeHtml(String(c?.id || ""))}">
 								<i class="fas fa-pen"></i>
 								<span>Editar</span>
 							</button>
 
-							<button
-								class="crm-inline-btn danger"
-								type="button"
-								data-action="delete"
-								data-id="${escapeHtml(String(c?.id || ""))}"
-								data-name="${escapeHtml(c?.nome || "")}"
-							>
+							<button class="crm-inline-btn danger" type="button" data-action="delete" data-id="${escapeHtml(String(c?.id || ""))}" data-name="${escapeHtml(c?.nome || "")}">
 								<i class="fas fa-trash"></i>
 								<span>Excluir</span>
 							</button>
@@ -231,8 +220,6 @@ function renderClientes() {
 }
 
 async function carregarClientes() {
-	els = getEls();
-
 	if (els.list) {
 		els.list.innerHTML = `
 			<div class="crm-empty-state">
@@ -243,16 +230,8 @@ async function carregarClientes() {
 	}
 
 	try {
-		const data = await api(`/api/clientes?_=${Date.now()}`);
-
-		state.clientes = Array.isArray(data)
-			? data
-			: Array.isArray(data?.clientes)
-				? data.clientes
-				: Array.isArray(data?.items)
-					? data.items
-					: [];
-
+		const data = await api("/api/clientes");
+		state.clientes = Array.isArray(data) ? data : [];
 		renderClientes();
 	} catch (err) {
 		console.error("[CRM] Erro ao carregar clientes:", err);
@@ -304,7 +283,8 @@ async function salvarCliente() {
 }
 
 async function deletarCliente(id, nome) {
-	if (!window.confirm(`Excluir o cliente "${nome}" e todas as vendas dele?`)) return;
+	if (!window.confirm(`Excluir o cliente "${nome}" e todas as vendas dele?`))
+		return;
 
 	try {
 		await api(`/api/clientes/${id}`, { method: "DELETE" });
@@ -322,8 +302,6 @@ function openClientePage(id) {
 }
 
 function bindEvents() {
-	els = getEls();
-
 	els.search?.addEventListener("input", (e) => {
 		state.search = e.target.value || "";
 		renderClientes();
@@ -333,12 +311,14 @@ function bindEvents() {
 	els.btnCloseClientForm?.addEventListener("click", closeClientForm);
 	els.btnSaveClient?.addEventListener("click", salvarCliente);
 	els.themeBtn?.addEventListener("click", toggleTheme);
+	els.backBtn?.addEventListener("click", goBackFromCRM);
 
 	els.list?.addEventListener("click", async (e) => {
 		const item = e.target.closest(".crm-client-item");
 		const actionBtn = e.target.closest("[data-action]");
 		const action = actionBtn?.getAttribute("data-action");
-		const id = actionBtn?.getAttribute("data-id") || item?.getAttribute("data-id");
+		const id =
+			actionBtn?.getAttribute("data-id") || item?.getAttribute("data-id");
 
 		if (!id) return;
 
@@ -351,7 +331,10 @@ function bindEvents() {
 
 		if (action === "delete") {
 			e.stopPropagation();
-			await deletarCliente(id, actionBtn.getAttribute("data-name") || "Cliente");
+			await deletarCliente(
+				id,
+				actionBtn.getAttribute("data-name") || "Cliente",
+			);
 			return;
 		}
 
@@ -361,24 +344,24 @@ function bindEvents() {
 	});
 }
 
-async function initCRM() {
-	els = getEls();
+window.addEventListener("DOMContentLoaded", async () => {
 	applySavedTheme();
 	revealCards();
 	bindEvents();
 	await carregarClientes();
 
 	if (window.gsap) {
-		window.gsap.fromTo(
+		gsap.fromTo(
 			".crm-page-wrap .card",
 			{ opacity: 0, y: 10 },
-			{ opacity: 1, y: 0, duration: 0.24, stagger: 0.04, ease: "power2.out", clearProps: "transform" },
+			{
+				opacity: 1,
+				y: 0,
+				duration: 0.24,
+				stagger: 0.04,
+				ease: "power2.out",
+				clearProps: "transform",
+			},
 		);
 	}
-}
-
-if (document.readyState === "loading") {
-	document.addEventListener("DOMContentLoaded", initCRM, { once: true });
-} else {
-	initCRM();
-}
+});

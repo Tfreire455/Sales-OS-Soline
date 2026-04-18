@@ -1,112 +1,164 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>CRM • Soline Sales OS</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/dashboard.css?v=20260418c" />
-  <link rel="stylesheet" href="/css/dashboard-shell.css?v=20260418c" />
-  <link rel="stylesheet" href="/css/crm-page.css?v=20260418c" />
-</head>
-<body class="crm-page-body crm-list-page">
-  <header class="crm-page-header">
-    <div class="crm-page-header-inner">
-      <div class="crm-page-brand">
-        <div class="crm-page-brand-icon"><i class="fas fa-users"></i></div>
-        <div>
-          <div class="crm-page-title">CRM de Clientes</div>
-          <div class="crm-page-subtitle">Clientes, cadastro rápido e acesso direto aos pedidos</div>
-        </div>
-      </div>
-      <div class="crm-page-actions">
-        <button id="crm-theme-btn" class="logout-btn btn-top-action btn-top-neutral" type="button" title="Alternar tema">
-          <i class="fas fa-moon" id="crm-theme-icon"></i>
-          <span>Tema</span>
-        </button>
-        <a href="/" class="logout-btn btn-top-action btn-top-green" title="Voltar ao painel">
-          <i class="fas fa-arrow-left"></i>
-          <span>Painel</span>
-        </a>
-      </div>
-    </div>
-  </header>
+	<head>
+		<meta charset="UTF-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+		<title>CRM • Soline Sales OS</title>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+		<link
+			href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+			rel="stylesheet" />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400&display=swap"
+			rel="stylesheet" />
+		<link rel="stylesheet" href="/css/dashboard.css?v=20260418c" />
+		<link rel="stylesheet" href="/css/dashboard-shell.css?v=20260418c" />
+		<link rel="stylesheet" href="/css/crm-page.css?v=20260418c" />
+	</head>
+	<body class="crm-page-body crm-list-page">
+		<header class="crm-page-header">
+			<div class="crm-page-header-inner">
+				<div class="crm-page-brand">
+					<div class="crm-page-brand-icon"><i class="fas fa-users"></i></div>
+					<div>
+						<div class="crm-page-title">CRM de Clientes</div>
+						<div class="crm-page-subtitle">
+							Clientes, cadastro rápido e acesso direto aos pedidos
+						</div>
+					</div>
+				</div>
+				<div class="crm-page-actions">
+					<button
+						class="crm-back-btn"
+						id="crmBackBtn"
+						type="button"
+						aria-label="Voltar">
+						<i class="fas fa-arrow-left"></i>
+					</button>
+					<button
+						id="crm-theme-btn"
+						class="logout-btn btn-top-action btn-top-neutral"
+						type="button"
+						title="Alternar tema">
+						<i class="fas fa-moon" id="crm-theme-icon"></i>
+						<span>Tema</span>
+					</button>
+					<a
+						href="/"
+						class="logout-btn btn-top-action btn-top-green"
+						title="Voltar ao painel">
+						<i class="fas fa-arrow-left"></i>
+						<span>Painel</span>
+					</a>
+				</div>
+			</div>
+		</header>
 
-  <main class="crm-page-wrap">
-    <section class="crm-page-shell crm-page-shell-single">
-      <div class="crm-page-list-panel card crm-list-card compact">
-        <div class="crm-list-topbar compact-topbar">
-          <div class="crm-block-head crm-block-head-tight">
-            <div>
-              <h1>Clientes</h1>
-              <p id="crm-total-count">0 clientes</p>
-            </div>
-            <button id="btn-open-client-form" class="crm-primary-btn" type="button">
-              <i class="fas fa-user-plus"></i>
-              <span>Novo cliente</span>
-            </button>
-          </div>
+		<main class="crm-page-wrap">
+			<section class="crm-page-shell crm-page-shell-single">
+				<div class="crm-page-list-panel card crm-list-card compact">
+					<div class="crm-list-topbar compact-topbar">
+						<div class="crm-block-head crm-block-head-tight">
+							<div>
+								<h1>Clientes</h1>
+								<p id="crm-total-count">0 clientes</p>
+							</div>
+							<button
+								id="btn-open-client-form"
+								class="crm-primary-btn"
+								type="button">
+								<i class="fas fa-user-plus"></i>
+								<span>Novo cliente</span>
+							</button>
+						</div>
 
-          <div class="crm-search-row compact">
-            <div class="crm-search-input-wrap">
-              <i class="fas fa-search"></i>
-              <input type="text" id="crm-search" placeholder="Buscar por nome, WhatsApp ou e-mail" />
-            </div>
-          </div>
-        </div>
+						<div class="crm-search-row compact">
+							<div class="crm-search-input-wrap">
+								<i class="fas fa-search"></i>
+								<input
+									type="text"
+									id="crm-search"
+									placeholder="Buscar por nome, WhatsApp ou e-mail" />
+							</div>
+						</div>
+					</div>
 
-        <section id="crm-form-section" class="crm-inline-form card is-hidden compact-form">
-          <div class="crm-block-head compact crm-inline-form-head">
-            <div>
-              <h2 id="crm-form-title">Novo cliente</h2>
-              <p>Cadastro rápido e direto.</p>
-            </div>
-            <button id="btn-close-client-form" class="crm-icon-btn" type="button" aria-label="Fechar formulário">
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
+					<section
+						id="crm-form-section"
+						class="crm-inline-form card is-hidden compact-form">
+						<div class="crm-block-head compact crm-inline-form-head">
+							<div>
+								<h2 id="crm-form-title">Novo cliente</h2>
+								<p>Cadastro rápido e direto.</p>
+							</div>
+							<button
+								id="btn-close-client-form"
+								class="crm-icon-btn"
+								type="button"
+								aria-label="Fechar formulário">
+								<i class="fas fa-times"></i>
+							</button>
+						</div>
 
-          <input type="hidden" id="edit-cliente-id" />
+						<input type="hidden" id="edit-cliente-id" />
 
-          <div class="crm-form-grid compact-grid">
-            <div class="crm-field-group">
-              <label for="cliente-nome">Nome completo</label>
-              <input type="text" id="cliente-nome" class="modal-input" placeholder="Ex: Maria Silva" />
-            </div>
-            <div class="crm-field-group">
-              <label for="cliente-whatsapp">WhatsApp</label>
-              <input type="text" id="cliente-whatsapp" class="modal-input" placeholder="Ex: 5511999998888" />
-            </div>
-            <div class="crm-field-group crm-field-group-full">
-              <label for="cliente-email">E-mail</label>
-              <input type="email" id="cliente-email" class="modal-input" placeholder="Ex: maria@email.com" />
-            </div>
-            <div class="crm-field-group crm-field-group-full">
-              <label for="cliente-obs">Observações</label>
-              <textarea id="cliente-obs" class="modal-input crm-textarea" placeholder="Preferências, observações ou notas importantes"></textarea>
-            </div>
-          </div>
+						<div class="crm-form-grid compact-grid">
+							<div class="crm-field-group">
+								<label for="cliente-nome">Nome completo</label>
+								<input
+									type="text"
+									id="cliente-nome"
+									class="modal-input"
+									placeholder="Ex: Maria Silva" />
+							</div>
+							<div class="crm-field-group">
+								<label for="cliente-whatsapp">WhatsApp</label>
+								<input
+									type="text"
+									id="cliente-whatsapp"
+									class="modal-input"
+									placeholder="Ex: 5511999998888" />
+							</div>
+							<div class="crm-field-group crm-field-group-full">
+								<label for="cliente-email">E-mail</label>
+								<input
+									type="email"
+									id="cliente-email"
+									class="modal-input"
+									placeholder="Ex: maria@email.com" />
+							</div>
+							<div class="crm-field-group crm-field-group-full">
+								<label for="cliente-obs">Observações</label>
+								<textarea
+									id="cliente-obs"
+									class="modal-input crm-textarea"
+									placeholder="Preferências, observações ou notas importantes"></textarea>
+							</div>
+						</div>
 
-          <div class="crm-form-actions">
-            <button id="btn-save-client" class="crm-primary-btn" type="button">
-              <i class="fas fa-save"></i>
-              <span>Salvar cliente</span>
-            </button>
-          </div>
-        </section>
+						<div class="crm-form-actions">
+							<button
+								id="btn-save-client"
+								class="crm-primary-btn"
+								type="button">
+								<i class="fas fa-save"></i>
+								<span>Salvar cliente</span>
+							</button>
+						</div>
+					</section>
 
-        <div id="crm-clients-list" class="crm-clients-list compact-list">
-          <div class="crm-empty-state">
-            <i class="fas fa-spinner fa-spin"></i>
-            <span>Carregando clientes...</span>
-          </div>
-        </div>
-      </div>
-    </section>
-  </main>
+					<div id="crm-clients-list" class="crm-clients-list compact-list">
+						<div class="crm-empty-state">
+							<i class="fas fa-spinner fa-spin"></i>
+							<span>Carregando clientes...</span>
+						</div>
+					</div>
+				</div>
+			</section>
+		</main>
 
-  <script src="/js/crm.js?v=20260418c"></script>
-</body>
+		<script src="/js/crm.js?v=20260418c"></script>
+	</body>
 </html>

@@ -1,22 +1,17 @@
-// SUBSTITUA TODO O ARQUIVO src/public/js/crm-cliente.js POR ESTE
-
 const state = { cliente: null, vendas: [] };
 
-function getEls() {
-	return {
-		themeBtn: document.getElementById("crm-theme-btn"),
-		themeIcon: document.getElementById("crm-theme-icon"),
-		pageTitle: document.getElementById("cliente-page-title"),
-		pageSubtitle: document.getElementById("cliente-page-subtitle"),
-		detailName: document.getElementById("detalhe-cliente-nome"),
-		detailInfo: document.getElementById("detalhe-cliente-info"),
-		detailSummary: document.getElementById("crm-detail-summary"),
-		salesList: document.getElementById("crm-sales-list"),
-		btnOpenSaleForm: document.getElementById("btn-open-sale-form"),
-	};
-}
-
-let els = getEls();
+const els = {
+	themeBtn: document.getElementById("crm-theme-btn"),
+	themeIcon: document.getElementById("crm-theme-icon"),
+	pageTitle: document.getElementById("cliente-page-title"),
+	pageSubtitle: document.getElementById("cliente-page-subtitle"),
+	detailName: document.getElementById("detalhe-cliente-nome"),
+	detailInfo: document.getElementById("detalhe-cliente-info"),
+	detailSummary: document.getElementById("crm-detail-summary"),
+	salesList: document.getElementById("crm-sales-list"),
+	btnOpenSaleForm: document.getElementById("btn-open-sale-form"),
+	backBtn: document.getElementById("crmBackBtn"),
+};
 
 const escapeHtml = (str = "") =>
 	String(str)
@@ -42,16 +37,14 @@ async function api(url, options = {}) {
 
 	try {
 		const res = await fetch(url, {
-			method: options.method || "GET",
+			...(options || {}),
 			credentials: "same-origin",
-			cache: "no-store",
-			redirect: "follow",
-			signal: controller.signal,
 			headers: {
 				Accept: "application/json",
-				...(options.headers || {}),
+				...((options && options.headers) || {}),
 			},
-			body: options.body,
+			redirect: "follow",
+			signal: controller.signal,
 		});
 
 		const contentType = (res.headers.get("content-type") || "").toLowerCase();
@@ -104,6 +97,14 @@ function toggleTheme() {
 	syncThemeIcon(next);
 }
 
+function goBackFromCliente() {
+	if (window.history.length > 1) {
+		window.history.back();
+		return;
+	}
+	window.location.href = "/crm";
+}
+
 function parseCurrencyValue(value) {
 	if (value === null || value === undefined || value === "") return 0;
 	if (typeof value === "number") return Number.isFinite(value) ? value : 0;
@@ -142,24 +143,24 @@ function getPagamentoMeta(venda) {
 	const restante = parseCurrencyValue(venda.valor_restante);
 	const status = String(venda.status_pagamento || "").toLowerCase();
 
-	if (status === "pago" || venda.pago === true)
+	if (status === "pago" || venda.pago === true) {
 		return { label: "Pago", cls: "success" };
+	}
+
 	if (status === "parcial" || (pago > 0 && restante > 0)) {
 		return { label: "Parcial", cls: "warning" };
 	}
+
 	return { label: "Pendente", cls: "danger" };
 }
 
 function renderCliente() {
-	if (!state.cliente) return;
-
 	const cliente = state.cliente;
-	const pendentes = Number(cliente.pendentes || 0);
+	if (!cliente) return;
 
 	els.pageTitle.textContent = cliente.nome || "Cliente";
 	els.pageSubtitle.textContent = "Informações gerais, pagamentos e pedidos";
 	els.detailName.textContent = cliente.nome || "Cliente";
-
 	els.detailInfo.textContent = [
 		cliente.whatsapp || "-",
 		cliente.email || null,
@@ -168,17 +169,21 @@ function renderCliente() {
 		.filter(Boolean)
 		.join(" • ");
 
+	const pendentes = Number(cliente.pendentes || 0);
+
 	els.detailSummary.innerHTML = `
 		<article class="card crm-summary-card">
 			<span class="crm-summary-label">Compras</span>
 			<strong>${escapeHtml(String(cliente.total_compras || 0))}</strong>
 		</article>
+
 		<article class="card crm-summary-card">
 			<span class="crm-summary-label">Pendências</span>
 			<strong class="${pendentes > 0 ? "is-danger" : "is-success"}">
 				${pendentes > 0 ? `${pendentes} pendente(s)` : "Em dia"}
 			</strong>
 		</article>
+
 		<article class="card crm-summary-card">
 			<span class="crm-summary-label">Contato</span>
 			<strong>${escapeHtml(cliente.whatsapp || "-")}</strong>
@@ -187,8 +192,6 @@ function renderCliente() {
 }
 
 function renderVendas() {
-	if (!els.salesList) return;
-
 	const vendas = state.vendas || [];
 
 	if (!vendas.length) {
@@ -222,6 +225,7 @@ function renderVendas() {
 								SKU ${escapeHtml(v.produto_sku || "-")} • Qtd ${escapeHtml(String(v.quantidade || 1))}
 							</div>
 						</div>
+
 						<span class="crm-pill ${pagamento.cls}">${pagamento.label}</span>
 					</div>
 
@@ -268,84 +272,65 @@ function renderVendas() {
 		.join("");
 }
 
-function renderClienteNaoEncontrado(msg) {
-	els.pageTitle.textContent = "Cliente não encontrado";
-	els.pageSubtitle.textContent =
-		msg || "Volte ao CRM e escolha um cliente válido";
-
-	if (els.detailName) els.detailName.textContent = "Cliente";
-	if (els.detailInfo) els.detailInfo.textContent = "-";
-	if (els.detailSummary) els.detailSummary.innerHTML = "";
-	if (els.salesList) {
-		els.salesList.innerHTML = `
-			<div class="crm-empty-state compact">
-				<i class="fas fa-circle-exclamation"></i>
-				<span>${escapeHtml(msg || "Cliente não encontrado.")}</span>
-			</div>
-		`;
-	}
-	if (els.btnOpenSaleForm) els.btnOpenSaleForm.disabled = true;
-}
-
 async function carregarDetalheCliente() {
-	els = getEls();
-
 	const params = new URLSearchParams(window.location.search);
 	const id = params.get("id");
 
 	if (!id) {
-		renderClienteNaoEncontrado("Cliente não informado.");
+		els.pageTitle.textContent = "Cliente não encontrado";
+		els.pageSubtitle.textContent = "Volte ao CRM e escolha um cliente válido";
+		els.salesList.innerHTML = `
+			<div class="crm-empty-state compact">
+				<i class="fas fa-circle-exclamation"></i>
+				<span>Cliente não informado.</span>
+			</div>
+		`;
+		if (els.btnOpenSaleForm) els.btnOpenSaleForm.disabled = true;
 		return;
 	}
 
 	try {
-		const clientes = await api(`/api/clientes?_=${Date.now()}`);
-		const listaClientes = Array.isArray(clientes)
-			? clientes
-			: Array.isArray(clientes?.clientes)
-				? clientes.clientes
-				: [];
-
-		const cliente = listaClientes.find((c) => Number(c.id) === Number(id));
+		const clientes = await api("/api/clientes");
+		const cliente = Array.isArray(clientes)
+			? clientes.find((c) => Number(c.id) === Number(id))
+			: null;
 
 		if (!cliente) {
-			renderClienteNaoEncontrado("Este registro não existe mais.");
+			els.pageTitle.textContent = "Cliente não encontrado";
+			els.pageSubtitle.textContent = "Este registro não existe mais";
+			els.salesList.innerHTML = `
+				<div class="crm-empty-state compact">
+					<i class="fas fa-circle-exclamation"></i>
+					<span>Cliente não encontrado.</span>
+				</div>
+			`;
+			if (els.btnOpenSaleForm) els.btnOpenSaleForm.disabled = true;
 			return;
 		}
 
 		state.cliente = cliente;
+
+		if (els.pageTitle) els.pageTitle.textContent = cliente.nome || "Cliente";
+		if (els.pageSubtitle)
+			els.pageSubtitle.textContent = "Carregando histórico...";
+
+		const vendas = await api(`/api/vendas/cliente/${id}`);
+		state.vendas = Array.isArray(vendas) ? vendas : [];
+
 		renderCliente();
-
-		let vendas = [];
-		try {
-			const vendasResp = await api(`/api/vendas/cliente/${id}?_=${Date.now()}`);
-			vendas = Array.isArray(vendasResp)
-				? vendasResp
-				: Array.isArray(vendasResp?.vendas)
-					? vendasResp.vendas
-					: [];
-		} catch (errVendas) {
-			console.error("[CRM CLIENTE] erro ao carregar vendas:", errVendas);
-			vendas = [];
-		}
-
-		state.vendas = vendas;
 		renderVendas();
 	} catch (err) {
-		console.error("[CRM CLIENTE] erro ao carregar detalhe:", err);
+		console.error("[CRM-CLIENTE] Erro ao carregar detalhe do cliente:", err);
 
-		els.pageTitle.textContent = "Erro ao carregar";
+		els.pageTitle.textContent = "Erro ao carregar cliente";
 		els.pageSubtitle.textContent =
-			err.message || "Não foi possível carregar o cliente.";
-
-		if (els.salesList) {
-			els.salesList.innerHTML = `
-				<div class="crm-empty-state compact">
-					<i class="fas fa-circle-exclamation"></i>
-					<span>${escapeHtml(err.message || "Falha ao carregar o histórico.")}</span>
-				</div>
-			`;
-		}
+			err.message || "Não foi possível carregar os dados";
+		els.salesList.innerHTML = `
+			<div class="crm-empty-state compact">
+				<i class="fas fa-circle-exclamation"></i>
+				<span>${escapeHtml(err.message || "Não foi possível carregar os dados do cliente.")}</span>
+			</div>
+		`;
 	}
 }
 
@@ -385,15 +370,13 @@ function goToPedido() {
 	url.searchParams.set("cliente_id", state.cliente.id);
 	url.searchParams.set("cliente_nome", state.cliente.nome || "");
 	url.searchParams.set("from", "crm-cliente");
-
 	window.location.href = url.toString();
 }
 
 function bindEvents() {
-	els = getEls();
-
 	els.themeBtn?.addEventListener("click", toggleTheme);
 	els.btnOpenSaleForm?.addEventListener("click", goToPedido);
+	els.backBtn?.addEventListener("click", goBackFromCliente);
 
 	els.salesList?.addEventListener("click", async (e) => {
 		const toggleBtn = e.target.closest('[data-sale-action="toggle-paid"]');
@@ -413,33 +396,17 @@ function bindEvents() {
 	});
 }
 
-async function initClientePage() {
-	els = getEls();
+window.addEventListener("DOMContentLoaded", async () => {
 	applySavedTheme();
 	revealCards();
 	bindEvents();
 	await carregarDetalheCliente();
 
 	if (window.gsap) {
-		window.gsap.fromTo(
+		gsap.fromTo(
 			".card",
 			{ opacity: 0, y: 8 },
-			{
-				opacity: 1,
-				y: 0,
-				duration: 0.22,
-				stagger: 0.035,
-				ease: "power2.out",
-				clearProps: "transform",
-			},
+			{ opacity: 1, y: 0, duration: 0.22, stagger: 0.035, ease: "power2.out" },
 		);
 	}
-}
-
-if (document.readyState === "loading") {
-	document.addEventListener("DOMContentLoaded", initClientePage, {
-		once: true,
-	});
-} else {
-	initClientePage();
-}
+});
