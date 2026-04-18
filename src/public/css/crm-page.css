@@ -523,3 +523,23 @@
   .crm-client-avatar { width: 48px; height:48px; border-radius:16px; }
   .crm-client-hero-copy h1 { font-size: 1.05rem; }
 }
+
+/* Garante que o CRM continue visível mesmo se a animação global não rodar */
+.crm-page-body .card,
+.crm-page-body .crm-inline-form,
+.crm-page-body .crm-page-list-panel,
+.crm-page-body .crm-sales-panel,
+.crm-page-body .crm-summary-card,
+.crm-page-body .crm-client-hero {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+}
+
+/* Mantém área da lista sempre ocupando espaço visual */
+#crm-clients-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 220px;
+}

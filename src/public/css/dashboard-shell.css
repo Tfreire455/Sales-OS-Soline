@@ -1,6 +1,7 @@
 /* Shell/UI patches moved out of HTML to avoid mobile cascade conflicts on deploy */
 
 /* GSAP reveal defaults */
+.card { opacity: 0; }
 .card:hover { transform: none; }
 .status-bar { opacity: 0; }
 .logout-btn { opacity: 0; }
