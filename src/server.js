@@ -417,30 +417,40 @@ app.get("/crm/cliente", requireAuth, noCacheHtml, (req, res) =>
 app.get("/pedido", requireAuth, noCacheHtml, (req, res) =>
 	res.sendFile(path.join(__dirname, "public/html", "pedido.html")),
 );
-app.use(express.static(path.join(__dirname, "public"), {
-	index: false,
-	etag: true,
-	lastModified: true,
-	setHeaders: (res, filePath) => {
-		if (/\.(js|css|html)$/i.test(filePath)) {
-			res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
-			res.setHeader("Pragma", "no-cache");
-			res.setHeader("Expires", "0");
-		}
-	},
-}));
-app.use(express.static(path.join(__dirname, "public"), {
-	index: false,
-	etag: true,
-	lastModified: true,
-	setHeaders: (res, filePath) => {
-		if (/\.(js|css|html)$/i.test(filePath)) {
-			res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
-			res.setHeader("Pragma", "no-cache");
-			res.setHeader("Expires", "0");
-		}
-	},
-}));
+app.use(
+	express.static(path.join(__dirname, "public"), {
+		index: false,
+		etag: true,
+		lastModified: true,
+		setHeaders: (res, filePath) => {
+			if (/\.(js|css|html)$/i.test(filePath)) {
+				res.setHeader(
+					"Cache-Control",
+					"no-store, no-cache, must-revalidate, private",
+				);
+				res.setHeader("Pragma", "no-cache");
+				res.setHeader("Expires", "0");
+			}
+		},
+	}),
+);
+app.use(
+	express.static(path.join(__dirname, "public"), {
+		index: false,
+		etag: true,
+		lastModified: true,
+		setHeaders: (res, filePath) => {
+			if (/\.(js|css|html)$/i.test(filePath)) {
+				res.setHeader(
+					"Cache-Control",
+					"no-store, no-cache, must-revalidate, private",
+				);
+				res.setHeader("Pragma", "no-cache");
+				res.setHeader("Expires", "0");
+			}
+		},
+	}),
+);
 
 app.get("/api/image-proxy", requireAuth, async (req, res) => {
 	const { url } = req.query;
@@ -755,7 +765,10 @@ app.get("/api/clientes", requireAuth, async (req, res) => {
 				ORDER BY c.nome ASC
 			`),
 			new Promise((_, reject) =>
-				setTimeout(() => reject(new Error("Timeout ao carregar clientes")), 10000),
+				setTimeout(
+					() => reject(new Error("Timeout ao carregar clientes")),
+					10000,
+				),
 			),
 		]);
 
@@ -778,7 +791,10 @@ app.get("/api/clientes", requireAuth, async (req, res) => {
 
 			res.json(fallback.rows || []);
 		} catch (fallbackErr) {
-			console.error("[GET /api/clientes] fallback falhou:", fallbackErr.message);
+			console.error(
+				"[GET /api/clientes] fallback falhou:",
+				fallbackErr.message,
+			);
 			res
 				.status(500)
 				.json({ error: fallbackErr.message || "Erro ao carregar clientes" });
@@ -814,50 +830,6 @@ app.post("/api/migrate", requireAuth, async (req, res) => {
 			success: false,
 			error: e.message || "Erro ao executar migração",
 		});
-	}
-});
-
-
-app.post("/api/migrate", requireAuth, async (req, res) => {
-	try {
-		const { password } = req.body || {};
-		if (!password || password !== config.DASHBOARD.PASS) {
-			return res.status(403).json({ success: false, error: "Senha incorreta" });
-		}
-
-		const mod = await import(path.join(__dirname, "..", "migrar.js"));
-		await mod.migrar();
-
-		const total = await db.executeQuery("SELECT COUNT(*)::int AS total FROM produtos");
-		return res.json({ success: true, total: total.rows?.[0]?.total || 0 });
-	} catch (e) {
-		console.error("[POST /api/migrate]", e);
-		return res.status(500).json({ success: false, error: e.message || "Erro ao executar migração" });
-	}
-});
-		console.error("[GET /api/clientes]", e.message);
-
-		try {
-			const fallback = await db.executeQuery(`
-				SELECT
-					c.*,
-					0::bigint AS total_compras,
-					0::bigint AS pendentes,
-					0::numeric AS valor_pago_total,
-					0::numeric AS valor_em_aberto,
-					0::numeric AS ticket_medio
-				FROM clientes c
-				ORDER BY c.nome ASC
-			`);
-
-			return res.json(fallback.rows || []);
-		} catch (fallbackErr) {
-			console.error("[GET /api/clientes][fallback]", fallbackErr.message);
-			return res.status(500).json({
-				error: "Nao foi possivel carregar os clientes no momento.",
-				details: fallbackErr.message,
-			});
-		}
 	}
 });
 
@@ -990,11 +962,9 @@ app.post("/api/vendas", requireAuth, async (req, res) => {
 
 			const prod = prodRes.rows[0];
 			if (item.quantidade > Number(prod.estoque || 0)) {
-				return res
-					.status(400)
-					.json({
-						error: `Estoque insuficiente para ${prod.nome}. Disponivel: ${prod.estoque}`,
-					});
+				return res.status(400).json({
+					error: `Estoque insuficiente para ${prod.nome}. Disponivel: ${prod.estoque}`,
+				});
 			}
 
 			produtosValidados.push({ item, prod });
