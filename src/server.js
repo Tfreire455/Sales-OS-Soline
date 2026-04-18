@@ -339,12 +339,10 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(
 	session({
-		name: "salesos.sid",
-		secret: config.DASHBOARD.SESSION_SECRET || "sales-os-session-secret",
+		secret: config.DASHBOARD.SESSION_SECRET,
 		resave: false,
 		saveUninitialized: false,
 		proxy: true,
-		rolling: true,
 		cookie: {
 			secure: "auto",
 			httpOnly: true,
@@ -354,6 +352,17 @@ app.use(
 	}),
 );
 
+// Evita que HTMLs autenticados sejam servidos do cache do navegador/proxy
+// (problema frequente em SquareCloud/Cloudflare — o JS/CSS novo carrega mas o HTML fica velho)
+const noCacheHtml = (_req, res, next) => {
+	res.set({
+		"Cache-Control": "no-store, no-cache, must-revalidate, private",
+		Pragma: "no-cache",
+		Expires: "0",
+	});
+	next();
+};
+
 const loginLimiter = rateLimit({
 	windowMs: 15 * 60 * 1000,
 	max: 5,
@@ -361,21 +370,15 @@ const loginLimiter = rateLimit({
 	legacyHeaders: false,
 });
 
-function isApiRequest(req) {
-	return (
-		req.path.startsWith("/api/") ||
-		req.get("x-requested-with") === "XMLHttpRequest" ||
-		(req.get("accept") || "").includes("application/json")
-	);
-}
-
 const requireAuth = (req, res, next) => {
-	if (req.session?.authenticated) return next();
-
-	if (isApiRequest(req)) {
-		return res.status(401).json({ error: "Sessão expirada", redirectTo: "/login" });
-	}
-
+	if (req.session.authenticated) return next();
+	// Para chamadas de API/XHR, responde 401 JSON em vez de redirect HTML
+	// (assim o fetch no frontend detecta sessão perdida e não faz parse de HTML como JSON)
+	const wantsJson =
+		req.path.startsWith("/api/") ||
+		req.xhr ||
+		(req.get("accept") || "").includes("application/json");
+	if (wantsJson) return res.status(401).json({ error: "nao-autenticado" });
 	return res.redirect("/login");
 };
 
@@ -402,16 +405,16 @@ app.get("/logout", (req, res) => {
 	});
 });
 
-app.get("/", requireAuth, (req, res) =>
+app.get("/", requireAuth, noCacheHtml, (req, res) =>
 	res.sendFile(path.join(__dirname, "public/html", "index.html")),
 );
-app.get("/crm", requireAuth, (req, res) =>
+app.get("/crm", requireAuth, noCacheHtml, (req, res) =>
 	res.sendFile(path.join(__dirname, "public/html", "crm.html")),
 );
-app.get("/crm/cliente", requireAuth, (req, res) =>
+app.get("/crm/cliente", requireAuth, noCacheHtml, (req, res) =>
 	res.sendFile(path.join(__dirname, "public/html", "crm-cliente.html")),
 );
-app.get("/pedido", requireAuth, (req, res) =>
+app.get("/pedido", requireAuth, noCacheHtml, (req, res) =>
 	res.sendFile(path.join(__dirname, "public/html", "pedido.html")),
 );
 app.use(express.static(path.join(__dirname, "public"), { index: false }));

@@ -6,7 +6,22 @@ const els = {
 };
 const escapeHtml = (str='') => String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
 const showToast = (msg) => alert(msg);
-async function api(url, options){ const res = await fetch(url, options); const data = await res.json().catch(()=>({})); if(!res.ok) throw new Error(data.error || 'Erro na requisição'); return data; }
+async function api(url, options){
+  const res = await fetch(url, {
+    ...(options || {}),
+    credentials: 'same-origin',
+    headers: { Accept: 'application/json', ...((options && options.headers) || {}) },
+    redirect: 'manual',
+  });
+  if (res.status === 401 || res.type === 'opaqueredirect' || res.status === 0) {
+    window.location.href = '/login';
+    throw new Error('Sessão expirada');
+  }
+  const ct = res.headers.get('content-type') || '';
+  const data = ct.includes('application/json') ? await res.json().catch(() => ({})) : {};
+  if (!res.ok) throw new Error(data.error || 'Erro na requisição');
+  return data;
+}
 function syncThemeIcon(theme){ if(els.themeIcon) els.themeIcon.className = `fas ${theme === 'light' ? 'fa-sun' : 'fa-moon'}`; }
 function applySavedTheme(){ const saved = localStorage.getItem('soline-theme') || 'dark'; document.documentElement.setAttribute('data-theme', saved); syncThemeIcon(saved); }
 function toggleTheme(){ const current = document.documentElement.getAttribute('data-theme') || 'dark'; const next = current === 'light' ? 'dark' : 'light'; document.documentElement.setAttribute('data-theme', next); localStorage.setItem('soline-theme', next); syncThemeIcon(next); }
@@ -64,19 +79,10 @@ function renderVendas(){
 async function carregarDetalheCliente(){
   const params = new URLSearchParams(window.location.search); const id = params.get('id');
   if(!id){ els.pageTitle.textContent='Cliente não encontrado'; els.pageSubtitle.textContent='Volte ao CRM e escolha um cliente válido'; els.salesList.innerHTML = `<div class="crm-empty-state compact"><i class="fas fa-circle-exclamation"></i><span>Cliente não informado.</span></div>`; els.btnOpenSaleForm.disabled=true; return; }
-  els.salesList.innerHTML = `<div class="crm-empty-state compact"><i class="fas fa-spinner fa-spin"></i><span>Carregando histórico do cliente...</span></div>`;
-  try {
-    const clientes = await api('/api/clientes');
-    const cliente = clientes.find(c => Number(c.id) === Number(id));
-    if(!cliente){ els.pageTitle.textContent='Cliente não encontrado'; els.pageSubtitle.textContent='Este registro não existe mais'; els.salesList.innerHTML = `<div class="crm-empty-state compact"><i class="fas fa-circle-exclamation"></i><span>Cliente não encontrado.</span></div>`; els.btnOpenSaleForm.disabled=true; return; }
-    state.cliente = cliente; state.vendas = await api(`/api/vendas/cliente/${id}`); renderCliente(); renderVendas();
-  } catch(err){
-    console.error('[CRM Cliente] Erro ao carregar detalhe:', err);
-    els.pageTitle.textContent='Erro ao carregar cliente';
-    els.pageSubtitle.textContent='Não foi possível buscar os dados agora';
-    els.salesList.innerHTML = `<div class="crm-empty-state compact"><i class="fas fa-circle-exclamation"></i><span>${escapeHtml(err.message || 'Falha ao carregar dados do cliente.')}</span></div>`;
-    els.btnOpenSaleForm.disabled=true;
-  }
+  const clientes = await api('/api/clientes');
+  const cliente = clientes.find(c => Number(c.id) === Number(id));
+  if(!cliente){ els.pageTitle.textContent='Cliente não encontrado'; els.pageSubtitle.textContent='Este registro não existe mais'; els.salesList.innerHTML = `<div class="crm-empty-state compact"><i class="fas fa-circle-exclamation"></i><span>Cliente não encontrado.</span></div>`; els.btnOpenSaleForm.disabled=true; return; }
+  state.cliente = cliente; state.vendas = await api(`/api/vendas/cliente/${id}`); renderCliente(); renderVendas();
 }
 async function togglePagoVenda(vendaId, pago){ try{ await api(`/api/vendas/${vendaId}/pago`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ pago }) }); showToast(pago ? 'Venda marcada como paga.' : 'Venda marcada como pendente.'); await carregarDetalheCliente(); } catch(err){ showToast(err.message || 'Erro ao atualizar pagamento.'); } }
 async function deletarVenda(vendaId){ if(!window.confirm('Excluir esta venda?')) return; try{ await api(`/api/vendas/${vendaId}`, { method:'DELETE' }); showToast('Venda excluída.'); await carregarDetalheCliente(); } catch(err){ showToast(err.message || 'Erro ao excluir venda.'); } }

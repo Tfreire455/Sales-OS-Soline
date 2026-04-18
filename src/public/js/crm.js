@@ -25,23 +25,26 @@ const escapeHtml = (str = "") =>
 		.replace(/"/g, "&quot;")
 		.replace(/'/g, "&#039;");
 const showToast = (msg) => alert(msg);
-async function api(url, options = {}) {
+async function api(url, options) {
 	const res = await fetch(url, {
+		...(options || {}),
 		credentials: "same-origin",
-		headers: { Accept: "application/json", ...(options.headers || {}) },
-		...options,
+		headers: {
+			Accept: "application/json",
+			...((options && options.headers) || {}),
+		},
+		redirect: "manual",
 	});
-
-	const contentType = (res.headers.get("content-type") || "").toLowerCase();
-	const isJson = contentType.includes("application/json");
-	const data = isJson ? await res.json().catch(() => ({})) : {};
-
-	if (res.status === 401 && data?.redirectTo) {
-		window.location.href = data.redirectTo;
+	// Sessão expirada — o servidor devolve 401 (ou redirect opaco)
+	if (res.status === 401 || res.type === "opaqueredirect" || res.status === 0) {
+		window.location.href = "/login";
 		throw new Error("Sessão expirada");
 	}
-
-	if (!res.ok) throw new Error(data.error || `Erro na requisição (${res.status})`);
+	const ct = res.headers.get("content-type") || "";
+	const data = ct.includes("application/json")
+		? await res.json().catch(() => ({}))
+		: {};
+	if (!res.ok) throw new Error(data.error || "Erro na requisição");
 	return data;
 }
 function syncThemeIcon(theme) {
@@ -131,15 +134,16 @@ function renderClientes() {
 }
 
 async function carregarClientes() {
-	els.list.innerHTML = `<div class="crm-empty-state"><i class="fas fa-spinner fa-spin"></i><span>Carregando clientes...</span></div>`;
 	try {
-		state.clientes = await api("/api/clientes");
-		renderClientes();
+		const data = await api("/api/clientes");
+		state.clientes = Array.isArray(data) ? data : [];
 	} catch (err) {
-		console.error("[CRM] Erro ao carregar clientes:", err);
-		els.total.textContent = "0 clientes";
-		els.list.innerHTML = `<div class="crm-empty-state"><i class="fas fa-circle-exclamation"></i><span>${escapeHtml(err.message || "Não foi possível carregar os clientes.")}</span></div>`;
+		state.clientes = [];
+		console.error("[CRM] Falha ao carregar clientes:", err);
+		els.list.innerHTML = `<div class="crm-empty-state"><i class="fas fa-triangle-exclamation"></i><span>Não foi possível carregar os clientes. Recarregue a página.</span></div>`;
+		return;
 	}
+	renderClientes();
 }
 async function salvarCliente() {
 	const payload = {
