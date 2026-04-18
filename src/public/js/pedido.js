@@ -1,3 +1,5 @@
+// SUBSTITUA TODO O ARQUIVO src/public/js/pedido.js POR ESTE
+
 const state = {
 	produtos: [],
 	filtrados: [],
@@ -15,6 +17,7 @@ const qs = (id) => document.getElementById(id);
 function parseValue(v) {
 	if (v == null || v === "") return 0;
 	if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+
 	let s = String(v)
 		.trim()
 		.replace(/\s+/g, "")
@@ -42,7 +45,7 @@ const formatCurrencyBR = (v) =>
 
 const escapeHtml = (str = "") =>
 	String(str).replace(
-		/[&<>\"']/g,
+		/[&<>"']/g,
 		(m) =>
 			({
 				"&": "&amp;",
@@ -59,6 +62,52 @@ function debounce(fn, delay = 220) {
 		clearTimeout(timer);
 		timer = setTimeout(() => fn(...args), delay);
 	};
+}
+
+async function api(url, options = {}) {
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(), 15000);
+
+	try {
+		const res = await fetch(url, {
+			method: options.method || "GET",
+			credentials: "same-origin",
+			cache: "no-store",
+			redirect: "follow",
+			signal: controller.signal,
+			headers: {
+				Accept: "application/json",
+				...(options.headers || {}),
+			},
+			body: options.body,
+		});
+
+		const contentType = (res.headers.get("content-type") || "").toLowerCase();
+		const isJson = contentType.includes("application/json");
+		const data = isJson ? await res.json().catch(() => ({})) : {};
+
+		if (res.status === 401 && data?.redirectTo) {
+			window.location.href = data.redirectTo;
+			throw new Error("Sessão expirada");
+		}
+
+		if (!res.ok) {
+			throw new Error(data?.error || `Erro na requisição (${res.status})`);
+		}
+
+		if (!isJson) {
+			throw new Error("Resposta inválida do servidor.");
+		}
+
+		return data;
+	} catch (err) {
+		if (err.name === "AbortError") {
+			throw new Error("A requisição demorou demais. Verifique o servidor na SquareCloud.");
+		}
+		throw err;
+	} finally {
+		clearTimeout(timeout);
+	}
 }
 
 function applySavedTheme() {
@@ -90,25 +139,40 @@ function readQuery() {
 function renderCliente() {
 	const nome = qs("clienteNome");
 	const meta = qs("clienteMeta");
+
 	if (nome) nome.textContent = state.cliente.nome || "Cliente não informado";
-	if (meta)
+	if (meta) {
 		meta.textContent = state.cliente.id
 			? `Cliente ID ${state.cliente.id}`
 			: "Selecione o cliente pelo CRM.";
+	}
 }
 
 async function fetchClienteInfo() {
-	if (!state.cliente.id) return;
+	if (!state.cliente.id) {
+		renderCliente();
+		return;
+	}
+
 	try {
-		const clientes = await fetch("/api/clientes").then((r) => r.json());
-		const cliente = clientes.find(
-			(c) => String(c.id) === String(state.cliente.id),
-		);
+		const clientes = await api(`/api/clientes?_=${Date.now()}`);
+		const lista = Array.isArray(clientes)
+			? clientes
+			: Array.isArray(clientes?.clientes)
+				? clientes.clientes
+				: [];
+
+		const cliente = lista.find((c) => String(c.id) === String(state.cliente.id));
+
 		if (cliente) {
 			state.cliente.nome = cliente.nome || state.cliente.nome;
-			renderCliente();
 		}
-	} catch (_) {}
+
+		renderCliente();
+	} catch (err) {
+		console.error("[PEDIDO] erro ao carregar cliente:", err);
+		renderCliente();
+	}
 }
 
 function getImageSrc(url) {
@@ -119,41 +183,72 @@ function getImageSrc(url) {
 function renderProdutosSkeleton() {
 	const wrap = qs("catalogoLista");
 	if (!wrap) return;
+
 	wrap.innerHTML = Array.from({ length: 6 })
 		.map(
 			() => `
-    <article class="prod-card loading-shimmer">
-      <div class="prod-thumb"></div>
-      <div>
-        <div class="prod-title-row">
-          <div style="width:100%">
-            <div style="height:20px;border-radius:10px;background:var(--surface-soft);width:65%;margin-bottom:10px"></div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <div style="height:26px;width:80px;border-radius:999px;background:var(--surface-soft)"></div>
-              <div style="height:26px;width:90px;border-radius:999px;background:var(--surface-soft)"></div>
-              <div style="height:26px;width:100px;border-radius:999px;background:var(--surface-soft)"></div>
-            </div>
-          </div>
-          <div style="height:24px;width:90px;border-radius:10px;background:var(--surface-soft)"></div>
-        </div>
-        <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap;margin-top:14px">
-          <div style="height:40px;width:120px;border-radius:999px;background:var(--surface-soft)"></div>
-          <div style="height:42px;width:130px;border-radius:14px;background:var(--surface-soft)"></div>
-        </div>
-      </div>
-    </article>
-  `,
+			<article class="prod-card loading-shimmer">
+				<div class="prod-thumb"></div>
+				<div>
+					<div class="prod-title-row">
+						<div style="width:100%">
+							<div style="height:20px;border-radius:10px;background:var(--surface-soft);width:65%;margin-bottom:10px"></div>
+							<div style="display:flex;gap:8px;flex-wrap:wrap">
+								<div style="height:26px;width:80px;border-radius:999px;background:var(--surface-soft)"></div>
+								<div style="height:26px;width:90px;border-radius:999px;background:var(--surface-soft)"></div>
+								<div style="height:26px;width:100px;border-radius:999px;background:var(--surface-soft)"></div>
+							</div>
+						</div>
+						<div style="height:24px;width:90px;border-radius:10px;background:var(--surface-soft)"></div>
+					</div>
+					<div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap;margin-top:14px">
+						<div style="height:40px;width:120px;border-radius:999px;background:var(--surface-soft)"></div>
+						<div style="height:42px;width:130px;border-radius:14px;background:var(--surface-soft)"></div>
+					</div>
+				</div>
+			</article>
+		`,
 		)
 		.join("");
 }
 
 async function loadProdutos() {
 	renderProdutosSkeleton();
-	const res = await fetch("/api/produtos");
-	const data = await res.json();
-	state.produtos = Array.isArray(data) ? data : [];
-	hydrateFilters();
-	aplicarFiltros({ resetPage: true });
+
+	try {
+		const data = await api(`/api/produtos?_=${Date.now()}`);
+		state.produtos = Array.isArray(data)
+			? data
+			: Array.isArray(data?.produtos)
+				? data.produtos
+				: [];
+
+		hydrateFilters();
+		aplicarFiltros({ resetPage: true });
+	} catch (err) {
+		console.error("[PEDIDO] erro ao carregar produtos:", err);
+
+		const wrap = qs("catalogoLista");
+		const count = qs("resultadoCount");
+		const hint = qs("resultadoHint");
+
+		if (count) count.textContent = "0 produtos";
+		if (hint) hint.textContent = err.message || "Não foi possível carregar os produtos.";
+
+		if (wrap) {
+			wrap.innerHTML = `
+				<div class="empty-state">
+					${escapeHtml(err.message || "Não foi possível carregar os produtos.")}
+				</div>
+			`;
+		}
+
+		state.produtos = [];
+		state.filtrados = [];
+		state.pageItems = [];
+		state.totalPages = 1;
+		renderPagination();
+	}
 }
 
 function hydrateFilters() {
@@ -167,6 +262,7 @@ function hydrateFilters() {
 			state.produtos.map((p) => (p.categoria || "").trim()).filter(Boolean),
 		),
 	].sort((a, b) => a.localeCompare(b));
+
 	const colecoes = [
 		...new Set(
 			state.produtos.map((p) => (p.colecao || "").trim()).filter(Boolean),
@@ -178,6 +274,7 @@ function hydrateFilters() {
 		categorias
 			.map((v) => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`)
 			.join("");
+
 	colecao.innerHTML =
 		'<option value="">Todas</option>' +
 		colecoes
@@ -198,20 +295,20 @@ function aplicarFiltros({ resetPage = false } = {}) {
 	let lista = state.produtos.filter((p) => {
 		const hay = [p.nome, p.sku, p.categoria, p.colecao].join(" ").toLowerCase();
 		const valor = parseValue(p.valor);
+
 		if (termo && !hay.includes(termo)) return false;
 		if (categoria && (p.categoria || "") !== categoria) return false;
 		if (colecao && (p.colecao || "") !== colecao) return false;
 		if (onlyAvail && Number(p.estoque) <= 0) return false;
 		if (valor < precoMin) return false;
 		if (valor > precoMax) return false;
+
 		return true;
 	});
 
 	switch (ordenar) {
 		case "nome":
-			lista.sort((a, b) =>
-				String(a.nome || "").localeCompare(String(b.nome || "")),
-			);
+			lista.sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || "")));
 			break;
 		case "preco-asc":
 			lista.sort((a, b) => parseValue(a.valor) - parseValue(b.valor));
@@ -290,49 +387,49 @@ function renderProdutos() {
 			const stockText = estoque <= 0 ? "Sem estoque" : `Estoque: ${estoque}`;
 
 			return `
-      <article class="prod-card">
-        <img
-          class="prod-thumb"
-          src="${escapeHtml(getImageSrc(p.image_url))}"
-          alt="${escapeHtml(p.nome)}"
-          onerror="this.src='https://via.placeholder.com/96x96?text=Foto'"
-        />
+				<article class="prod-card">
+					<img
+						class="prod-thumb"
+						src="${escapeHtml(getImageSrc(p.image_url))}"
+						alt="${escapeHtml(p.nome)}"
+						onerror="this.src='https://via.placeholder.com/96x96?text=Foto'"
+					/>
 
-        <div>
-          <div class="prod-title-row">
-            <div>
-              <h3 class="prod-title">${escapeHtml(p.nome)}</h3>
-              <div class="prod-meta">
-                <span class="pill">SKU ${escapeHtml(p.sku)}</span>
-                ${p.categoria ? `<span class="pill">${escapeHtml(p.categoria)}</span>` : ""}
-                ${p.colecao ? `<span class="pill">${escapeHtml(p.colecao)}</span>` : ""}
-                <span class="pill ${stockClass}">${stockText}</span>
-              </div>
-            </div>
+					<div>
+						<div class="prod-title-row">
+							<div>
+								<h3 class="prod-title">${escapeHtml(p.nome)}</h3>
+								<div class="prod-meta">
+									<span class="pill">SKU ${escapeHtml(p.sku)}</span>
+									${p.categoria ? `<span class="pill">${escapeHtml(p.categoria)}</span>` : ""}
+									${p.colecao ? `<span class="pill">${escapeHtml(p.colecao)}</span>` : ""}
+									<span class="pill ${stockClass}">${stockText}</span>
+								</div>
+							</div>
 
-            <div class="prod-price">${escapeHtml(formatCurrencyBR(p.valor))}</div>
-          </div>
+							<div class="prod-price">${escapeHtml(formatCurrencyBR(p.valor))}</div>
+						</div>
 
-          <div class="prod-actions">
-            <div class="qty-stepper">
-              <button type="button" onclick="addQty('${escapeHtml(p.sku)}', -1, ${estoque})">−</button>
-              <span>${qty}</span>
-              <button type="button" onclick="addQty('${escapeHtml(p.sku)}', 1, ${estoque})">+</button>
-            </div>
+						<div class="prod-actions">
+							<div class="qty-stepper">
+								<button type="button" onclick="addQty('${escapeHtml(p.sku)}', -1, ${estoque})">−</button>
+								<span>${qty}</span>
+								<button type="button" onclick="addQty('${escapeHtml(p.sku)}', 1, ${estoque})">+</button>
+							</div>
 
-            <button
-              type="button"
-              class="add-btn"
-              ${estoque <= 0 ? "disabled" : ""}
-              onclick="adicionarAoCarrinho('${escapeHtml(p.sku)}')"
-            >
-              <i class="fas fa-plus"></i>
-              Adicionar
-            </button>
-          </div>
-        </div>
-      </article>
-    `;
+							<button
+								type="button"
+								class="add-btn"
+								${estoque <= 0 ? "disabled" : ""}
+								onclick="adicionarAoCarrinho('${escapeHtml(p.sku)}')"
+							>
+								<i class="fas fa-plus"></i>
+								Adicionar
+							</button>
+						</div>
+					</div>
+				</article>
+			`;
 		})
 		.join("");
 }
@@ -354,8 +451,9 @@ function renderPagination() {
 		!lastBtn ||
 		!pageBadge ||
 		!paginationWrap
-	)
+	) {
 		return;
+	}
 
 	pageBadge.textContent = `Página ${state.page} de ${state.totalPages}`;
 	paginationWrap.style.display = state.filtrados.length ? "flex" : "none";
@@ -377,14 +475,16 @@ function renderPagination() {
 function getVisiblePages(current, total) {
 	if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
 	if (current <= 4) return [1, 2, 3, 4, 5, "...", total];
-	if (current >= total - 3)
+	if (current >= total - 3) {
 		return [1, "...", total - 4, total - 3, total - 2, total - 1, total];
+	}
 	return [1, "...", current - 1, current, current + 1, "...", total];
 }
 
 function goToPage(page) {
 	const nextPage = Math.max(1, Math.min(state.totalPages, Number(page) || 1));
 	if (nextPage === state.page) return;
+
 	state.page = nextPage;
 	updatePagedItems();
 	renderProdutos();
@@ -402,8 +502,10 @@ function scrollCatalogTop() {
 function updateSummary() {
 	const count = qs("resultadoCount");
 	const hint = qs("resultadoHint");
-	if (count)
+
+	if (count) {
 		count.textContent = `${state.filtrados.length} produto${state.filtrados.length !== 1 ? "s" : ""}`;
+	}
 
 	if (hint) {
 		if (!state.filtrados.length) {
@@ -424,9 +526,7 @@ function adicionarAoCarrinho(sku) {
 	if (estoque <= 0) return;
 
 	const qty = Math.min(getQty(sku), estoque);
-	const existing = state.carrinho.find(
-		(item) => String(item.produto_sku) === String(sku),
-	);
+	const existing = state.carrinho.find((item) => String(item.produto_sku) === String(sku));
 	const totalDesejado = (existing?.quantidade || 0) + qty;
 
 	if (totalDesejado > estoque) {
@@ -450,9 +550,7 @@ function adicionarAoCarrinho(sku) {
 }
 
 function alterCartQty(sku, delta) {
-	const item = state.carrinho.find(
-		(x) => String(x.produto_sku) === String(sku),
-	);
+	const item = state.carrinho.find((x) => String(x.produto_sku) === String(sku));
 	const produto = state.produtos.find((x) => String(x.sku) === String(sku));
 	if (!item || !produto) return;
 
@@ -462,9 +560,7 @@ function alterCartQty(sku, delta) {
 }
 
 function removerDoCarrinho(sku) {
-	state.carrinho = state.carrinho.filter(
-		(item) => String(item.produto_sku) !== String(sku),
-	);
+	state.carrinho = state.carrinho.filter((item) => String(item.produto_sku) !== String(sku));
 	renderCarrinho();
 }
 
@@ -481,40 +577,40 @@ function renderCarrinho() {
 	if (!wrap || !totalEl || !btn) return;
 
 	if (!state.carrinho.length) {
-		wrap.innerHTML =
-			'<div class="empty-state">Nenhum item adicionado ainda.</div>';
+		wrap.innerHTML = '<div class="empty-state">Nenhum item adicionado ainda.</div>';
 		totalEl.textContent = "R$ 0,00";
 		btn.disabled = true;
 		return;
 	}
 
 	let total = 0;
+
 	wrap.innerHTML = state.carrinho
 		.map((item) => {
 			const subtotal = item.valor * item.quantidade;
 			total += subtotal;
 
 			return `
-      <div class="carrinho-item">
-        <div class="carrinho-top">
-          <div>
-            <strong>${escapeHtml(item.produto_nome)}</strong>
-            <small>SKU ${escapeHtml(item.produto_sku)}</small>
-          </div>
-          <strong>${escapeHtml(formatCurrencyBR(subtotal))}</strong>
-        </div>
+				<div class="carrinho-item">
+					<div class="carrinho-top">
+						<div>
+							<strong>${escapeHtml(item.produto_nome)}</strong>
+							<small>SKU ${escapeHtml(item.produto_sku)}</small>
+						</div>
+						<strong>${escapeHtml(formatCurrencyBR(subtotal))}</strong>
+					</div>
 
-        <div class="carrinho-controls">
-          <div class="qty-stepper">
-            <button type="button" onclick="alterCartQty('${escapeHtml(item.produto_sku)}', -1)">−</button>
-            <span>${item.quantidade}</span>
-            <button type="button" onclick="alterCartQty('${escapeHtml(item.produto_sku)}', 1)">+</button>
-          </div>
+					<div class="carrinho-controls">
+						<div class="qty-stepper">
+							<button type="button" onclick="alterCartQty('${escapeHtml(item.produto_sku)}', -1)">−</button>
+							<span>${item.quantidade}</span>
+							<button type="button" onclick="alterCartQty('${escapeHtml(item.produto_sku)}', 1)">+</button>
+						</div>
 
-          <button type="button" class="link-btn" onclick="removerDoCarrinho('${escapeHtml(item.produto_sku)}')">Remover</button>
-        </div>
-      </div>
-    `;
+						<button type="button" class="link-btn" onclick="removerDoCarrinho('${escapeHtml(item.produto_sku)}')">Remover</button>
+					</div>
+				</div>
+			`;
 		})
 		.join("");
 
@@ -523,10 +619,15 @@ function renderCarrinho() {
 }
 
 async function confirmarPedido() {
-	if (!state.cliente.id)
-		return alert("Cliente não informado. Volte ao CRM e selecione um cliente.");
-	if (!state.carrinho.length)
-		return alert("Adicione pelo menos um item ao pedido.");
+	if (!state.cliente.id) {
+		alert("Cliente não informado. Volte ao CRM e selecione um cliente.");
+		return;
+	}
+
+	if (!state.carrinho.length) {
+		alert("Adicione pelo menos um item ao pedido.");
+		return;
+	}
 
 	const btn = qs("btnConfirmarPedido");
 	if (!btn) return;
@@ -547,14 +648,11 @@ async function confirmarPedido() {
 			})),
 		};
 
-		const res = await fetch("/api/vendas", {
+		await api("/api/vendas", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(body),
 		});
-
-		const result = await res.json();
-		if (!res.ok) throw new Error(result.error || "Erro ao registrar pedido");
 
 		alert("Pedido registrado com sucesso.");
 		voltarOrigem();
@@ -585,24 +683,14 @@ function limparFiltros() {
 }
 
 function bindEvents() {
-	const debouncedFilter = debounce(
-		() => aplicarFiltros({ resetPage: true }),
-		220,
-	);
+	const debouncedFilter = debounce(() => aplicarFiltros({ resetPage: true }), 220);
 
 	qs("produtoBusca")?.addEventListener("input", debouncedFilter);
 	qs("filtroPrecoMin")?.addEventListener("input", debouncedFilter);
 	qs("filtroPrecoMax")?.addEventListener("input", debouncedFilter);
 
-	[
-		"filtroCategoria",
-		"filtroColecao",
-		"filtroOrdenacao",
-		"filtroDisponiveis",
-	].forEach((id) => {
-		qs(id)?.addEventListener("change", () =>
-			aplicarFiltros({ resetPage: true }),
-		);
+	["filtroCategoria", "filtroColecao", "filtroOrdenacao", "filtroDisponiveis"].forEach((id) => {
+		qs(id)?.addEventListener("change", () => aplicarFiltros({ resetPage: true }));
 	});
 
 	qs("btnLimparFiltros")?.addEventListener("click", limparFiltros);
@@ -611,15 +699,20 @@ function bindEvents() {
 	qs("themeToggleBtn")?.addEventListener("click", toggleTheme);
 
 	qs("btnPrimeiraPagina")?.addEventListener("click", () => goToPage(1));
-	qs("btnPaginaAnterior")?.addEventListener("click", () =>
-		goToPage(state.page - 1),
-	);
-	qs("btnProximaPagina")?.addEventListener("click", () =>
-		goToPage(state.page + 1),
-	);
-	qs("btnUltimaPagina")?.addEventListener("click", () =>
-		goToPage(state.totalPages),
-	);
+	qs("btnPaginaAnterior")?.addEventListener("click", () => goToPage(state.page - 1));
+	qs("btnProximaPagina")?.addEventListener("click", () => goToPage(state.page + 1));
+	qs("btnUltimaPagina")?.addEventListener("click", () => goToPage(state.totalPages));
+}
+
+async function initPedidoPage() {
+	applySavedTheme();
+	readQuery();
+	renderCliente();
+	bindEvents();
+	renderCarrinho();
+
+	await fetchClienteInfo();
+	await loadProdutos();
 }
 
 window.addQty = addQty;
@@ -629,12 +722,8 @@ window.removerDoCarrinho = removerDoCarrinho;
 window.voltarOrigem = voltarOrigem;
 window.goToPage = goToPage;
 
-window.addEventListener("DOMContentLoaded", async () => {
-	applySavedTheme();
-	readQuery();
-	renderCliente();
-	bindEvents();
-	renderCarrinho();
-	await fetchClienteInfo();
-	await loadProdutos();
-});
+if (document.readyState === "loading") {
+	document.addEventListener("DOMContentLoaded", initPedidoPage, { once: true });
+} else {
+	initPedidoPage();
+}
